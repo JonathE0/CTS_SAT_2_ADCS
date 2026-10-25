@@ -7,8 +7,8 @@ An interactive 1U CubeSat attitude simulator with three ideal reaction wheels. U
 Requires Python 3.10 or newer. No additional Python packages are needed.
 
 ```bash
-git clone https://github.com/JonathE0/CTS_Simple_Visualizers.git
-cd "CTS_Simple_Visualizers/Manual Throttle Control"
+git clone https://github.com/JonathE0/CTS_SAT_2_ADCS.git
+cd "CTS_SAT_2_ADCS/CTS_Simple_Visulizers/Manual Throttle Control"
 python cubesat_attitude.py
 ```
 

@@ -14,8 +14,8 @@ No additional Python packages are required.
 Open Git Bash in the directory where you want to download the repository, then run:
 
 ```bash
-git clone https://github.com/JonathE0/CTS_Simple_Visualizers.git
-cd "CTS_Simple_Visualizers/Coarse Sun Sensor"
+git clone https://github.com/JonathE0/CTS_SAT_2_ADCS.git
+cd "CTS_SAT_2_ADCS/CTS_Simple_Visulizers/Coarse Sun Sensor"
 python Cubesat_sun_sensor.py
 ```
 

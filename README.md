@@ -5,4 +5,6 @@ Interactive Python visualizers for learning CubeSat sensing and attitude control
 - [Coarse Sun Sensor](CTS_Simple_Visulizers/Coarse%20Sun%20Sensor/README.md): explore six ideal cosine Sun sensors on a rotating 1U CubeSat.
 - [Manual Throttle Control](CTS_Simple_Visulizers/Manual%20Throttle%20Control/README.md): use three reaction-wheel momentum throttles to detumble a CubeSat and point +Z toward the Sun.
 
+- [Control Lab](CTS_Simple_Visulizers/Control%20Lab/README.md): build control diagrams and explore torque, feedback, reaction-wheel momentum, and three-axis Sun pointing.
+
 See each folder for setup instructions and model assumptions. Python 3.10 or newer is required; no additional Python packages are needed.

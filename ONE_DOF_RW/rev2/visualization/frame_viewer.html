@@ -1,4 +1,5 @@
 <!-- Preview: https://htmlpreview.github.io/?https://github.com/JonathE0/CTS_SAT_2_ADCS/blob/main/ONE_DOF_RW/rev2/visualization/frame_viewer.html -->
+<meta charset="utf-8">
 <title>RW1DOF Testbed Frame</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -167,10 +168,20 @@ ol.notes b { font-weight: 600; }
   </main>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
-(() => {
+(async () => {
+// Preview services may evaluate inline code before external script tags finish.
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Could not load ' + src));
+    document.head.appendChild(script);
+  });
+}
+await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js');
+await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js');
 // ---------- geometry (mm, Z up, origin = baseplate top on the spin axis) ----------
 const PLATE = 160, PLATE_T = 5, INSET = 2, H = PLATE / 2;
 const WALL_T = 3, SLOT_W = 3.6, SLOT_D = 3, CHANNEL = INSET;
@@ -677,5 +688,11 @@ Promise.all([loadMesh('flywheel.json'), loadMesh('tt_case.json')])
   .then(([fw, cs]) => { geoFW = fw; geoCase = cs; })
   .catch(err => { const e = document.createElement('div'); e.className = 'err'; e.textContent = 'Couldn’t load the flywheel and case models, showing simple shapes instead.'; stage.appendChild(e); console.warn(err); })
   .finally(() => { build(); requestAnimationFrame(frame); });
-})();
+})().catch(error => {
+  const notice = document.createElement('div');
+  notice.className = 'err';
+  notice.textContent = 'The 3D viewer could not start. ' + error.message;
+  document.getElementById('stage').appendChild(notice);
+  console.error(error);
+});
 </script>

@@ -1,0 +1,2 @@
+# Slicer output stays downloadable but does not dominate language stats or diffs.
+*.gcode linguist-generated=true linguist-detectable=false

@@ -1,0 +1,680 @@
+<title>RW1DOF Testbed Frame</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: instrument-panel sidebar beside a full-height orbitable 3D stage; stacks stage-first on phones */
+:root {
+  --bg: #e8ecef; --panel: #f7f9fa; --ink: #16202a; --muted: #5a6773; --line: #d0d7dd;
+  --accent: #1f6fd6; --good: #1d7f47; --warn: #a86b12; --bad: #bf3d2a;
+  --stage: #dde4e9; --grid1: #b4bec7; --grid2: #cdd5dc; --chip: #e9eef2;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1216; --panel: #141b21; --ink: #e3e9ed; --muted: #93a1ad; --line: #26313a;
+  --accent: #72aaff; --good: #4cc38a; --warn: #f0b429; --bad: #ff806c;
+  --stage: #10171c; --grid1: #2c3841; --grid2: #1b242b; --chip: #1c252c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1216; --panel: #141b21; --ink: #e3e9ed; --muted: #93a1ad; --line: #26313a;
+  --accent: #72aaff; --good: #4cc38a; --warn: #f0b429; --bad: #ff806c;
+  --stage: #10171c; --grid1: #2c3841; --grid2: #1b242b; --chip: #1c252c; color-scheme: dark }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+.app {
+  box-sizing: border-box; height: 100%; display: grid; grid-template-columns: minmax(300px, 350px) 1fr; gap: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px;
+}
+.panel { min-width: 0; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 18px; }
+.stage { position: relative; min-width: 0; min-height: 0; border-radius: 10px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); }
+canvas#c { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+canvas#c:active { cursor: grabbing; }
+
+h1 { font-family: var(--f-display); font-weight: 700; font-size: 26px; line-height: 1.1; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+.eyebrow { font-family: var(--f-display); font-weight: 600; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.minor { font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+section { display: flex; flex-direction: column; }
+
+.toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; }
+.tg { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; user-select: none; min-width: 0; }
+.tg small { color: var(--muted); font-size: 12px; }
+.tg input { appearance: none; width: 30px; height: 18px; border-radius: 9px; background: var(--line); position: relative; flex: none; margin: 0; cursor: pointer; transition: background .15s; }
+.tg input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--panel); transition: transform .15s; }
+.tg input:checked { background: var(--accent); }
+.tg input:checked::after { transform: translateX(12px); }
+.tg input:disabled { opacity: .5; cursor: not-allowed; }
+.tg input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tg.wide { grid-column: 1 / -1; }
+
+.status { display: flex; align-items: center; gap: 10px; }
+.pill { flex: none; font-family: var(--f-display); font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1.5px solid currentColor; }
+.pill.good { color: var(--good); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); }
+.status span:last-child { font-size: 13px; color: var(--muted); }
+dl.read { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin: 10px 0 0; align-items: baseline; }
+dl.read dt { font-size: 13.5px; color: var(--muted); min-width: 0; }
+dl.read dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 14px; text-align: right; white-space: nowrap; }
+.fine { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
+ol.notes { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; font-size: 13.5px; }
+ol.notes b { font-weight: 600; }
+
+.hint { position: absolute; left: 12px; bottom: 12px; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--panel) 82%, transparent); padding: 5px 9px; border-radius: 6px; pointer-events: none; }
+.tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 8px; }
+.stage.clean #labels, .stage.clean .hint, .stage.clean #tip, .stage.clean .err { display: none !important; }
+.reset { font: 600 13px var(--f-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; font-family: var(--f-display); font-weight: 600; font-size: 12.5px; letter-spacing: .02em; white-space: nowrap; color: var(--ink); background: color-mix(in srgb, var(--panel) 86%, transparent); border: 1px solid var(--line); padding: 2px 7px; border-radius: 5px; }
+.lbl.new { border-color: var(--good); color: var(--good); }
+#tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; max-width: 250px; box-shadow: 0 4px 14px rgba(0,0,0,.14); }
+#tip b { display: block; font-family: var(--f-display); font-size: 14px; }
+.err { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--bad); color: var(--bad); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+
+@media (max-width: 820px) {
+  html, body { height: auto; }
+  .app { height: auto; grid-template-columns: 1fr; }
+  .stage { height: 62vh; min-height: 340px; order: -1; }
+}
+@media (prefers-reduced-motion: reduce) { .tg input, .tg input::after { transition: none; } }
+</style>
+
+<div class="app">
+  <aside class="panel">
+    <header>
+      <h1>RW1DOF Testbed Frame</h1>
+      <p class="sub">1-DOF reaction-wheel string testbed, CTS-SAT-2 ADCS. Rev 2: all electronics on one wall, one pinned X-truss lid. Dimensions in mm.</p>
+    </header>
+
+    <section>
+      <p class="eyebrow">Build</p>
+      <p class="minor" style="margin-top:0">Slide-in wall panels</p>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="w-left" checked disabled>Left <small>electronics</small></label>
+        <label class="tg"><input type="checkbox" id="w-right" checked>Right <small id="tag-right"></small></label>
+        <label class="tg"><input type="checkbox" id="w-back">Back</label>
+        <label class="tg"><input type="checkbox" id="w-front">Front</label>
+      </div>
+      <div class="toggles" style="margin-top:12px">
+        <label class="tg wide"><input type="checkbox" id="cfg-batt" checked>12.6 V pack tray, auto-placed under the plate</label>
+        <label class="tg wide"><input type="checkbox" id="cfg-trim" checked>Trim weight on the right wall, auto-sized</label>
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Show</p>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="t-walls" checked>Wall panels</label>
+        <label class="tg"><input type="checkbox" id="t-pillars" checked>Pillars</label>
+        <label class="tg"><input type="checkbox" id="t-trusses" checked>Top lid + hook</label>
+        <label class="tg"><input type="checkbox" id="t-elec" checked>Electronics</label>
+        <label class="tg"><input type="checkbox" id="t-motor" checked>Motor + case</label>
+        <label class="tg"><input type="checkbox" id="t-fw" checked>Flywheel</label>
+        <label class="tg"><input type="checkbox" id="t-labels" checked>Labels</label>
+        <label class="tg"><input type="checkbox" id="t-axes" checked>Axes + CoM</label>
+        <label class="tg"><input type="checkbox" id="t-slide">Slide walls out</label>
+        <label class="tg"><input type="checkbox" id="t-lid">Pull rods, lift lid</label>
+        <label class="tg"><input type="checkbox" id="t-hang">Show how it hangs</label>
+        <label class="tg"><input type="checkbox" id="t-spin">Spin flywheel</label>
+      </div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Balance and authority</p>
+      <div class="status"><span class="pill good" id="pill">Aligned</span><span id="pill-note"></span></div>
+      <dl class="read">
+        <dt>Total mass</dt><dd id="r-mass">–</dd>
+        <dt>CoM offset from spin axis</dt><dd id="r-off">–</dd>
+        <dt>Hangs tilted by</dt><dd id="r-tilt">–</dd>
+        <dt>Hook to CoM distance</dt><dd id="r-arm">–</dd>
+        <dt>CoM height (flywheel spans 29–44)</dt><dd id="r-comz">–</dd>
+        <dt>Trim weight, right wall</dt><dd id="r-trim">–</dd>
+        <dt>Platform inertia J<sub>b</sub></dt><dd id="r-jb">–</dd>
+        <dt>Wheel momentum at 250 rpm</dt><dd id="r-h">–</dd>
+        <dt>Max platform rate it can absorb</dt><dd id="r-rate">–</dd>
+      </dl>
+      <p class="fine">Masses are estimates from part volumes at your print settings; 12.6 V 3S pack + tray ≈ 165 g (pack size assumed at 70 × 58 × 21 mm, measure yours). The flywheel is 31.4 g from the slicer, J<sub>w</sub> = 3.16 × 10⁻⁵ kg·m². J<sub>b</sub> excludes the flywheel, as in rw1dof_params.m. The lid and rods are new in this revision and are not in the printable STLs yet.</p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Design notes</p>
+      <ol class="notes">
+        <li><b>Slide-in walls.</b> 3.0 mm panels in 3.6 mm pillar slots (0.3 mm clearance per side for PLA), seated in a 2 mm baseplate channel. Panels stop 17 mm under the pillar tops, below the lock rods and the lid skirts, so nothing on the lid has to reach down beside them. A side panel can lift about 7 mm before it hits a rod. Screw boards on before a panel goes in.</li>
+        <li><b>One wall for all electronics.</b> The 90 × 70 perf board (ESP32 + IMU) and the red 43 × 43 L298N module sit side by side on the left wall, 133 of the 140 mm between pillars, with the motor plugs facing them. The L298N drives the motor and its 78M05 makes the ESP32's 5 V, so the MD13S and any buck module are gone. That makes the old back wall and the four trusses unnecessary.</li>
+        <li><b>L298N limits.</b> It drops about 2 V across its bridge, so a full 12.6 V pack puts about 10 V on a 6 V TT motor. Keep the firmware's 50% duty cap. The 78M05 sees 12.6 V, just past the 12 V jumper rating, and burns about 1 W feeding the ESP32, so check it for heat or move the ESP32 to a small 5 V buck. The firmware needs ENA = PWM and IN1/IN2 for direction instead of the MD13S's PWM/DIR.</li>
+        <li><b>One-piece lid.</b> A 168 × 168 flat X on the four pillar tops, printed as one part, with a printed eye at the centre. Each corner block wraps 15 mm of its pillar top. It replaces 4 arms, 4 caps and a hub (9 parts). Arms are 8 × 10, which keeps sag under about 0.3 mm with the whole platform hanging from the middle.</li>
+        <li><b>Printed rods, pillar to pillar.</b> A 5 mm printed rod runs through both lid blocks and both pillars above the left wall, and another above the right. Holes are 5.4 mm. Print each rod lying flat so the layers run along it, with a head on one end and a printed cotter through the other; print a few spares. Working in shear, the rods carry the platform's weight, which a vertical friction pin would not. Back and front panels, if fitted, are held by the lid covering their slot tops.</li>
+        <li><b>Balance with the pack.</b> About 55 g of boards on the left wall is cancelled by the 150 g pack under the plate, sitting about 25 mm toward +x, so the steel trim weight can drop to zero. The tray's four slotted holes let it slide 30 mm in x and 1.5 mm in y, and the trim weight on the right wall only appears if the pack runs out of travel.</li>
+        <li><b>Hook is close to the CoM.</b> Tilt is the CoM offset divided by the hook-to-CoM distance, now about 80 mm instead of about 180 mm. Each millimetre of offset costs about 0.7°. A taller eye post lowers that.</li>
+        <li><b>IMU +Y along the string.</b> The firmware reads the gyro's Y axis, so the GY-521 must sit with +Y vertical. Tie a single strand of monofilament or thin steel wire to the eye; twisted twine unwinds and creeps.</li>
+      </ol>
+    </section>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="c" aria-label="3D model of the testbed frame. Drag to orbit, scroll to zoom."></canvas>
+    <div id="labels"></div>
+    <div id="tip" hidden></div>
+    <div class="tools">
+      <button class="reset" id="clean" type="button" aria-pressed="false">Hide labels</button>
+      <button class="reset" id="reset" type="button">Reset view</button>
+    </div>
+    <div class="hint">Drag to orbit · scroll to zoom · right-drag to pan · hover a part</div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+// ---------- geometry (mm, Z up, origin = baseplate top on the spin axis) ----------
+const PLATE = 160, PLATE_T = 5, INSET = 2, H = PLATE / 2;
+const WALL_T = 3, SLOT_W = 3.6, SLOT_D = 3, CHANNEL = INSET;
+const PILLAR = 10, PILLAR_H = 100;
+const C = H - PILLAR / 2;                                   // 75: pillar centres and wall centre-lines
+const SPAN = C - PILLAR / 2;                                // 70: pillar inner faces
+const WALL_LEN = 2 * SPAN + 2 * (SLOT_D - 0.3);             // between pillars plus into both slots
+// top lid: flat X on the pillar tops; each corner block wraps its pillar top, and M3 rods slide pillar to pillar through blocks and pillars
+const LID_BLK = 18, LID_T = 10, ARM_W = 8, LID_TOP = PILLAR_H + LID_T, SKIRT_Z = 85;
+const WALL_TOP = 83;                                       // panels stop under the skirts and rods
+const PIN_R = 2.5, PIN_LEN = 2 * C + LID_BLK + 7, PIN_OUT = 210, LID_PULL = 70;
+const PIN_Z = 93;                                          // printed 5 mm rods on the left and right only; back/front panels are held by the lid skirts
+const EYE_W = 18, EYE_Z = LID_TOP + 13, HOOK_Z = EYE_Z + 3.5, ARM_DEEP = PILLAR_H - 6;             // string touches the top of the eye's hole
+const CASE_Z = -INSET, GB_BOTTOM = CASE_Z + 11.3, GB_TOP = GB_BOTTOM + 18.6, FW_Z = GB_TOP + 0.7;
+const RHO = 1.24e-3, RHO_STEEL = 7.85e-3, JW = 3.16e-5, W250 = 250 * Math.PI / 30;
+const BOARD_OFF = C - WALL_T / 2 - 5;                       // boards on 5 mm standoffs
+const PERF_Y = -20, DRV_Y = 50;                            // along the left wall: perf board, then the L298N (centre y)
+const WIRE_HOLE = [-62, -24, 4];
+const BATT = { L: 70, W: 58, T: 21, g: 165 };               // 12.6 V 3S pack ~150 g + tray ~15 g; pack size is assumed, measure yours
+const TRAY = { clr: 0.5, wall: 2.5, floor: 2.5, dx: 28, ty: 39, x0: 0, x1: 30, ytr: 1.5, xw: 6 };   // tray, tab positions, slot travel in x and y
+const LIFT = 135, SIDES = ['left', 'right', 'back', 'front'];
+// motor flipped: its body and plugs face the driver wall (-x)
+const INSET_OUTLINE = [[-15.5,-12.9],[10.25,-12.9],[10.25,-26.6],[23.25,-26.6],[23.25,-12.9],[55.2,-12.9],
+                       [55.2,12.9],[23.25,12.9],[23.25,26.6],[10.25,26.6],[10.25,12.9],[-15.5,12.9]].map(([x, y]) => [-x, y]);
+
+const COL = { pla: 0xd8dcd8, truss: 0xe2a11a, fw: 0x2b2e33, case: 0x6c737a, tt: 0xf1c232, can: 0xb8bec5,
+  pcb: 0x2e6f48, perf: 0xc4a067, esp: 0x1f2328, shield: 0xc3c7cb, imu: 0x2a59b0, term: 0x2f8f5c,
+  batt: 0x24272b, battTop: 0xb87333, steel: 0xa9afb5, red: 0xc23b2b, blk: 0x1d1f22, chip: 0x16181b, l298: 0xb02a2a, pack: 0x2a62c9, tag: 0xe3c11f };
+
+// ---------- renderer / scene ----------
+const stage = document.getElementById('stage'), canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(34, 1, 1, 6000);
+camera.up.set(0, 0, 1);
+const HOME = { pos: new THREE.Vector3(440, -480, 330), target: new THREE.Vector3(0, 0, 85) };
+camera.position.copy(HOME.pos);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.target.copy(HOME.target); controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 120; controls.maxDistance = 1600; controls.update();
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x8b9096, 0.8); hemi.position.set(0, 0, 1); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+sun.position.set(260, -320, 560); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -320, right: 320, top: 320, bottom: -320, near: 50, far: 1400 });
+scene.add(sun);
+const FLOOR_Z = -PLATE_T - BATT.T - TRAY.clr - TRAY.floor - 2;
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.position.z = FLOOR_Z; ground.receiveShadow = true; scene.add(ground);
+let grid = null;
+
+const world = new THREE.Group(); scene.add(world);
+const pivot = new THREE.Group(); pivot.position.set(0, 0, HOOK_Z); world.add(pivot);
+const platform = new THREE.Group(); platform.position.set(0, 0, -HOOK_Z); pivot.add(platform);
+const layers = {};
+['base', 'walls', 'pillars', 'trusses', 'elec', 'motor', 'fw', 'axes'].forEach(k => { layers[k] = new THREE.Group(); platform.add(layers[k]); });
+const spinner = new THREE.Group(); layers.fw.add(spinner);
+
+const lineMat = (c, dash) => dash ? new THREE.LineDashedMaterial({ color: c, dashSize: 6, gapSize: 4 }) : new THREE.LineBasicMaterial({ color: c });
+function line(pts, material) { const g = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p))); const l = new THREE.Line(g, material); l.computeLineDistances(); return l; }
+world.add(line([[0, 0, HOOK_Z], [0, 0, HOOK_Z + 420]], lineMat(0xbdb39c)));            // the string
+const plumb = line([[0, 0, HOOK_Z], [0, 0, FLOOR_Z]], lineMat(0x7a8691, true)); world.add(plumb);
+
+// ---------- helpers ----------
+const mat = (color, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.78, metalness: 0 }, o));
+const parentOf = p => typeof p === 'string' ? layers[p] : p;
+let parts = [];                    // { name, g, c: [x,y,z] mm, izz kg m^2 about own centroid, rotor }
+const labelDefs = [];
+const sideGroups = {}, sideState = {};
+SIDES.forEach(s => { sideState[s] = { z: LIFT }; });
+let lidG = null;
+const pinList = [];
+const lidState = { lid: 0, pin: 0 };
+function mesh(parent, geo, color, info, o) {
+  const m = new THREE.Mesh(geo, mat(color, o)); m.castShadow = m.receiveShadow = true;
+  m.userData.info = info; parentOf(parent).add(m); return m;
+}
+function box(parent, size, center, color, info, o) { const m = mesh(parent, new THREE.BoxGeometry(...size), color, info, o); m.position.set(...center); return m; }
+function cylZ(parent, r, h, center, color, info, o) { const m = mesh(parent, new THREE.CylinderGeometry(r, r, h, 32), color, info, o); m.rotation.x = Math.PI / 2; m.position.set(...center); return m; }
+function tube(parent, pts, r, color, info) {
+  const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
+  return mesh(parent, new THREE.TubeGeometry(curve, 64, r, 8, false), color, info);
+}
+const rect = (x0, x1, y0, y1) => new THREE.Path([[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(p => new THREE.Vector2(...p)));
+const boxIzz = (g, sx, sy) => g / 1000 * ((sx * sx + sy * sy) * 1e-6) / 12;
+function part(name, g, c, izz = 0, rotor = false) { parts.push({ name, g, c, izz, rotor }); }
+function label(text, parent, pos, isNew = false) { const a = new THREE.Object3D(); a.position.set(...pos); parentOf(parent).add(a); labelDefs.push({ text, anchor: a, isNew }); }
+function sideGroup(side, layer) { const g = new THREE.Group(); g.position.z = sideState[side].z; layers[layer].add(g); (sideGroups[side] = sideGroups[side] || []).push(g); return g; }
+function clear() {
+  for (const k in layers) {
+    const g = layers[k];
+    for (let i = g.children.length - 1; i >= 0; i--) {
+      const ch = g.children[i];
+      if (ch === spinner) continue;
+      g.remove(ch); ch.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); });
+    }
+  }
+  spinner.clear(); parts = []; labelDefs.length = 0; lidG = null; pinList.length = 0;
+  SIDES.forEach(s => { sideGroups[s] = []; });
+  document.getElementById('labels').textContent = '';
+}
+
+// ---------- mesh assets (published next to the page) ----------
+let geoFW = null, geoCase = null;
+function loadMesh(u) {
+  return fetch(u).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }).then(d => {
+    const bin = atob(d.positions_b64), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bytes.buffer), 3));
+    g.computeVertexNormals(); g.userData.shared = true;
+    return g;
+  });
+}
+
+// ---------- builders ----------
+function buildBase() {
+  const info = { name: 'Baseplate', note: '160 × 160 × 5. A 14 mm rim carries the wall channels and pillars, a centre web holds the motor inset, and four windows take out about 20% of the plastic. Four slotted holes take the pack tray’s screws. A wire hole passes the battery leads.' };
+  const square = () => new THREE.Shape([[-H, -H], [H, -H], [H, H], [-H, H]].map(p => new THREE.Vector2(...p)));
+  const wireHole = () => { const p = new THREE.Path(); p.absarc(WIRE_HOLE[0], WIRE_HOLE[1], WIRE_HOLE[2], 0, Math.PI * 2, true); return p; };
+  const ch = SLOT_W / 2;
+  const rr = (x0, x1, y0, y1, r) => {
+    const p = new THREE.Path(); p.moveTo(x0 + r, y0); p.lineTo(x1 - r, y0); p.absarc(x1 - r, y0 + r, r, -Math.PI / 2, 0, false);
+    p.lineTo(x1, y1 - r); p.absarc(x1 - r, y1 - r, r, 0, Math.PI / 2, false); p.lineTo(x0 + r, y1);
+    p.absarc(x0 + r, y1 - r, r, Math.PI / 2, Math.PI, false); p.lineTo(x0, y0 + r); p.absarc(x0 + r, y0 + r, r, Math.PI, 1.5 * Math.PI, false); return p;
+  };
+  const wins = () => [-1, 1].flatMap(sx => [-1, 1].map(sy => rr(Math.min(sx * 5, sx * 66), Math.max(sx * 5, sx * 66), Math.min(sy * 46, sy * 66), Math.max(sy * 46, sy * 66), 6)));
+  const slots = () => [-1, 1].flatMap(sx => [-1, 1].map(sy => rr(sx * TRAY.dx + TRAY.x0 - 1.7, sx * TRAY.dx + TRAY.x1 + 1.7, sy * TRAY.ty - TRAY.ytr - 1.7, sy * TRAY.ty + TRAY.ytr + 1.7, 3)));   // pack tray screw slots
+  const top = square();
+  top.holes.push(...wins(), ...slots());
+  top.holes.push(new THREE.Path(INSET_OUTLINE.map(p => new THREE.Vector2(...p))), wireHole(),
+    rect(-C - ch, -C + ch, -SPAN, SPAN), rect(C - ch, C + ch, -SPAN, SPAN), rect(-SPAN, SPAN, C - ch, C + ch), rect(-SPAN, SPAN, -C - ch, -C + ch));
+  mesh('base', new THREE.ExtrudeGeometry(top, { depth: INSET, bevelEnabled: false }), COL.pla, info).position.z = -INSET;
+  const bot = square(); bot.holes.push(wireHole(), ...wins(), ...slots());
+  mesh('base', new THREE.ExtrudeGeometry(bot, { depth: PLATE_T - INSET, bevelEnabled: false }), COL.pla, info).position.z = -PLATE_T;
+  const g = PLATE * PLATE * PLATE_T * RHO * 0.45 * 0.78;    // four corner windows take out about 20%
+  part('Baseplate', g, [0, 0, -PLATE_T / 2], boxIzz(g, PLATE, PLATE));
+  label('Baseplate, channels on all 4 sides', 'base', [10, -C + 4, 1]);
+}
+function pillarShape() {      // cross-section of the +x,+y pillar: slots on its -y and -x faces, toward the centre
+  const s = SLOT_W / 2, p = PILLAR / 2, d = p - SLOT_D;
+  return new THREE.Shape([[-p, -p], [-s, -p], [-s, -d], [s, -d], [s, -p], [p, -p], [p, p], [-p, p], [-p, s], [-d, s], [-d, -s], [-p, -s]].map(q => new THREE.Vector2(...q)));
+}
+function buildPillars() {
+  const g = PILLAR * PILLAR * PILLAR_H * RHO * 0.7, geo = new THREE.ExtrudeGeometry(pillarShape(), { depth: PILLAR_H, bevelEnabled: false });
+  const info = { name: 'Slotted pillar', note: `10 × 10 × ${PILLAR_H} with ${SLOT_W} × ${SLOT_D} mm slots on both inner faces, so any side can take a wall. A 5.4 mm cross-hole near the top takes the lock rod on the left and right pillars.` };
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    const m = mesh('pillars', geo, COL.pla, info);
+    m.position.set(sx * C, sy * C, 0); m.scale.set(sx, sy, 1);
+    part('Pillar', g, [sx * C, sy * C, PILLAR_H / 2], boxIzz(g, PILLAR, PILLAR));
+  }
+  label('Slotted pillar ×4', 'pillars', [C, -C, PILLAR_H * 0.6]);
+}
+const WALL_SPEC = { left: [[WALL_T, WALL_LEN], [-C, 0]], right: [[WALL_T, WALL_LEN], [C, 0]],
+                    back: [[WALL_LEN, WALL_T], [0, C]], front: [[WALL_LEN, WALL_T], [0, -C]] };
+// wall lightening: 7 mm ribs on a 30 mm lattice, M3 holes on the ribs; rib centres along the wall (u) and up it (v)
+const RIB = 7, LAT_U = [-60, -30, 0, 30, 60], LAT_V = [10, 40, 70];
+const WIN_FRAC = (LAT_U.length - 1) * (LAT_V.length - 1) * (23 * 23 - (4 - Math.PI) * 9) / (WALL_LEN * (WALL_TOP + CHANNEL));
+function roundRect(x0, x1, y0, y1, r) {
+  const p = new THREE.Path(); p.moveTo(x0 + r, y0); p.lineTo(x1 - r, y0); p.absarc(x1 - r, y0 + r, r, -Math.PI / 2, 0, false);
+  p.lineTo(x1, y1 - r); p.absarc(x1 - r, y1 - r, r, 0, Math.PI / 2, false); p.lineTo(x0 + r, y1);
+  p.absarc(x0 + r, y1 - r, r, Math.PI / 2, Math.PI, false); p.lineTo(x0, y0 + r); p.absarc(x0 + r, y0 + r, r, Math.PI, 1.5 * Math.PI, false); return p;
+}
+function latticeWall() {
+  const s = new THREE.Shape([[-WALL_LEN / 2, -CHANNEL], [WALL_LEN / 2, -CHANNEL], [WALL_LEN / 2, WALL_TOP], [-WALL_LEN / 2, WALL_TOP]].map(p => new THREE.Vector2(...p)));
+  for (let i = 0; i < LAT_U.length - 1; i++) for (let j = 0; j < LAT_V.length - 1; j++)
+    s.holes.push(roundRect(LAT_U[i] + RIB / 2, LAT_U[i + 1] - RIB / 2, LAT_V[j] + RIB / 2, LAT_V[j + 1] - RIB / 2, 3));
+  return new THREE.ExtrudeGeometry(s, { depth: WALL_T, bevelEnabled: false });
+}
+function buildWall(side) {
+  const [size, [x, y]] = WALL_SPEC[side], h = WALL_TOP + CHANNEL, zc = h / 2 - CHANNEL;
+  const g = WALL_LEN * WALL_T * h * RHO * 0.9 * (1 - WIN_FRAC), grp = sideGroup(side, 'walls');
+  const geo = latticeWall(), V = (a, b, c) => new THREE.Vector3(a, b, c);
+  const alongY = side === 'left' || side === 'right';
+  geo.applyMatrix4(new THREE.Matrix4().makeBasis(...(alongY ? [V(0, 1, 0), V(0, 0, 1), V(1, 0, 0)] : [V(1, 0, 0), V(0, 0, 1), V(0, -1, 0)])));
+  const m = mesh(grp, geo, COL.pla,
+    { name: `Wall panel (${side})`, note: `${WALL_LEN.toFixed(1)} × ${WALL_T} × ${h}, ≈${g.toFixed(0)} g with a 30 mm rib lattice: 7 mm ribs, M3 holes on the ribs, about a third of the panel open. Slides down the pillar slots into the baseplate channel and stops ${PILLAR_H - WALL_TOP} mm under the pillar top, below the lock rods.` });
+  m.position.set(alongY ? x - WALL_T / 2 : x, alongY ? y : y + WALL_T / 2, 0);
+  part('Wall ' + side, g, [x, y, zc], boxIzz(g, size[0], size[1]));
+  if (side === 'right') label('Slide-in wall panel', grp, [x, y + 40, WALL_TOP - 6]);
+}
+function taperedArm(L) {            // plan: 13 wide at the centre, 8 in the span, 11 at the blocks. Depth: 16 at the centre, 10 from 70 mm out
+  const hw = [[-L / 2, 5.5], [-100, 5.5], [-86, 4], [-60, 4], [-20, 6.5], [20, 6.5], [60, 4], [86, 4], [100, 5.5], [L / 2, 5.5]];
+  const us = [-L / 2, -100, -86, -70, -60, -20, -18, 18, 20, 60, 70, 86, 100, L / 2];
+  const half = u => { for (let i = 0; i < hw.length - 1; i++) if (u <= hw[i + 1][0]) return hw[i][1] + (hw[i + 1][1] - hw[i][1]) * (u - hw[i][0]) / (hw[i + 1][0] - hw[i][0]); return hw[hw.length - 1][1]; };
+  const bot = u => { const a = Math.abs(u); return a >= 70 ? PILLAR_H : a <= 18 ? ARM_DEEP : ARM_DEEP + (a - 18) / 52 * (PILLAR_H - ARM_DEEP); };
+  const pos = [], idx = [];
+  us.forEach(u => { const w = half(u), zb = bot(u); pos.push(u, -w, zb, u, w, zb, u, w, LID_TOP, u, -w, LID_TOP); });
+  for (let i = 0; i < us.length - 1; i++) for (let k = 0; k < 4; k++) {
+    const a = 4 * i + k, b = 4 * i + (k + 1) % 4, c = 4 * (i + 1) + (k + 1) % 4, d = 4 * (i + 1) + k;
+    idx.push(a, b, c, a, c, d);
+  }
+  const e = 4 * (us.length - 1);
+  idx.push(0, 1, 2, 0, 2, 3, e, e + 1, e + 2, e, e + 2, e + 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  const flat = g.toNonIndexed(); flat.computeVertexNormals(); g.dispose(); return flat;
+}
+function buildLid() {
+  const lid = new THREE.Group(); layers.trusses.add(lid); lidG = lid;
+  const blkInfo = { name: 'Lid corner block', note: '18 × 18 × 25. A pocket wraps the top 15 mm of the pillar and covers the wall slots. A 5.4 mm cross-hole takes the lock rod.' };
+  const armInfo = { name: 'Lid X-truss', note: 'Two diagonals, 212 mm corner to corner, tapered in plan and depth: 13 wide and 16 deep at the centre where the bending is, 8 wide and 10 deep in the span, flared to 11 at the blocks. The whole lid prints as one 168 × 168 part: four blocks, the X and the eye.' };
+  const pinInfo = { name: 'Lock rod', note: 'Printed 5 mm rod, 175 mm, slid from one pillar to the other through both lid blocks and both pillars, above the wall. Print it lying flat so the layers run along it. Head on one end, printed cotter on the other. The platform hangs from these rods in shear.' };
+  const eyeInfo = { name: 'Printed eye', note: 'Single attachment point on the spin axis: a round-topped tab with a 7 mm hole, flared into the X. Tie the filament through it.' };
+  const L = 2 * C * Math.SQRT2, armG = L * 9 * 12 * RHO * 0.75;
+  for (const a of [Math.PI / 4, -Math.PI / 4]) {
+    const m = mesh(lid, taperedArm(L), COL.truss, armInfo, { side: THREE.DoubleSide });
+    m.rotation.z = a;
+    part('Lid arm', armG, [0, 0, PILLAR_H + 5], armG / 1000 * (L * L * 1e-6) / 12);
+  }
+  const blkH = LID_TOP - SKIRT_Z, blkZ = (LID_TOP + SKIRT_Z) / 2, blkG = LID_BLK * LID_BLK * blkH * RHO * 0.6;
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    const bg = new THREE.ExtrudeGeometry(new THREE.Shape(roundRect(-LID_BLK / 2, LID_BLK / 2, -LID_BLK / 2, LID_BLK / 2, 3).getPoints(8)), { depth: blkH, bevelEnabled: false });
+    mesh(lid, bg, COL.truss, blkInfo).position.set(sx * C, sy * C, SKIRT_Z);
+    part('Lid block', blkG, [sx * C, sy * C, blkZ], boxIzz(blkG, LID_BLK, LID_BLK));
+  }
+  for (const side of ['left', 'right']) {
+    const dir = { left: [0, 1], right: [0, -1], back: [1, 0], front: [-1, 0] }[side];
+    const at = { left: [-C, 0], right: [C, 0], back: [0, C], front: [0, -C] }[side];
+    const base = [at[0], at[1], PIN_Z];
+    const pg = new THREE.Group(); pg.rotation.z = dir[0] ? -dir[0] * Math.PI / 2 : (dir[1] > 0 ? 0 : Math.PI);
+    layers.trusses.add(pg); pinList.push({ g: pg, base, dir });
+    mesh(pg, new THREE.CylinderGeometry(PIN_R, PIN_R, PIN_LEN, 16), COL.red, pinInfo);
+    mesh(pg, new THREE.CylinderGeometry(4.5, 4.5, 3, 24), COL.red, pinInfo).position.y = PIN_LEN / 2 + 1.5;
+    mesh(pg, new THREE.TorusGeometry(3.4, 0.9, 8, 20), COL.red, pinInfo).position.y = PIN_LEN / 2 + 6.5;
+    mesh(pg, new THREE.BoxGeometry(12, 2.4, 3), COL.truss, { name: 'Printed cotter', note: 'Flat 2.4 × 3 mm key through a 3 mm cross-hole in the rod end. It stops the rod sliding out.' }).position.y = -PIN_LEN / 2 + 3;
+    pg.position.set(...base);
+    part('Lock rod', 5, base);
+    if (side === 'left') label('Lock rod, pillar to pillar', pg, [0, -45, 8], true);
+  }
+  const es = new THREE.Shape();      // round-topped tab, 7 mm thick, 7 mm string hole concentric with the top
+  es.moveTo(-EYE_W / 2, LID_TOP - 1); es.lineTo(EYE_W / 2, LID_TOP - 1); es.lineTo(EYE_W / 2, EYE_Z);
+  es.absarc(0, EYE_Z, EYE_W / 2, 0, Math.PI, false); es.lineTo(-EYE_W / 2, LID_TOP - 1);
+  const eh = new THREE.Path(); eh.absarc(0, EYE_Z, 3.5, 0, Math.PI * 2, true); es.holes.push(eh);
+  const eg = new THREE.ExtrudeGeometry(es, { depth: 7, bevelEnabled: false }); eg.rotateX(Math.PI / 2); eg.translate(0, 3.5, 0);
+  mesh(lid, eg, COL.truss, eyeInfo);
+  part('Printed eye', 3, [0, 0, EYE_Z]);
+  label('Hook (printed eye)', lid, [0, 0, EYE_Z + 12]);
+  label('Top lid, one-piece X', lid, [-C * 0.5, -C * 0.5, LID_TOP + 2], true);
+}
+function buildMotor() {
+  const caseInfo = { name: 'TT motor case', note: 'Your downloaded enclosure in the baseplate inset, flipped so the motor end and its plugs face the driver wall.' };
+  if (geoCase) { const m = mesh('motor', geoCase, COL.case, caseInfo); m.position.z = CASE_Z; m.rotation.z = Math.PI; }
+  else box('motor', [69.7, 24.8, 30], [-19.85, 0, CASE_Z + 15], COL.case, caseInfo);
+  part('Motor case', 17, [-23.6, 0, CASE_Z + 9.3]);
+  const zc = (GB_BOTTOM + GB_TOP) / 2;
+  const tt = { name: 'TT gear motor (1:48)', note: '≈30 g, ~250 rpm at 6 V. Gearbox runs from 11.5 to −25.5 mm from the shaft, the motor and plugs beyond that toward the driver.' };
+  box('motor', [37, 22.44, 18.6], [-7, 0, zc], COL.tt, tt);
+  box('motor', [28.2, 22.44, 22.4], [-39.6, 0, zc], COL.can, tt, { metalness: 0.4, roughness: 0.45 });
+  box('motor', [4.8, 5, 2.8], [13.9, 0, zc], COL.tt, tt);
+  for (const s of [-1, 1]) box('motor', [1.2, 3, 4], [-54.2, s * 4, zc], COL.steel, { name: 'Motor terminals', note: 'Face the driver wall: the leads to the L298N are short.' });
+  cylZ('motor', 2.7, 9.3, [0, 0, GB_BOTTOM - 4.65], COL.tt, tt);
+  cylZ('motor', 2.7, 8.7, [0, 0, GB_TOP + 4.35], COL.tt, tt);
+  part('TT motor', 30, [-20, 0, zc]);
+  label('TT motor, plugs toward driver', 'motor', [-44, -14, CASE_Z + 31]);
+}
+function buildFlywheel() {
+  const info = { name: 'Flywheel', note: '80 mm, 31.4 g as sliced. J ≈ 3.16 × 10⁻⁵ kg·m², h ≈ 8.3 × 10⁻⁴ N·m·s at 250 rpm.' };
+  let m;
+  if (geoFW) m = new THREE.Mesh(geoFW, mat(COL.fw, { roughness: 0.6 }));
+  else { m = new THREE.Mesh(new THREE.CylinderGeometry(40, 40, 12, 64), mat(COL.fw)); m.rotation.x = Math.PI / 2; m.position.z = 9; }
+  m.castShadow = m.receiveShadow = true; m.userData.info = info; spinner.add(m);
+  spinner.position.set(0, 0, FW_Z);
+  part('Flywheel', 31.4, [0, 0, FW_Z + 9.24], 0, true);
+  label('Flywheel', 'fw', [0, -40, FW_Z + 15]);
+}
+function buildElectronics() {        // everything on the left wall, in that wall's frame: boards face +x
+  const g = sideGroup('left', 'elec'), x0 = -BOARD_OFF, yP = PERF_Y;
+  const perf = { name: 'ESP32 + IMU perf board', note: '≈90 × 70 perf board with an ESP32 DevKit and a GY-521 MPU6050, ≈30 g together. On 5 mm standoffs.' };
+  const imu = { name: 'IMU (GY-521 MPU6050)', note: 'Mount it with +Y vertical, parallel to the string: the firmware reads gyro Y.' };
+  box(g, [1.6, 90, 70], [x0 + 0.8, yP, 50], COL.perf, perf);
+  box(g, [1.6, 55, 28], [x0 + 9, yP - 10, 66], COL.esp, perf);
+  box(g, [3, 18, 25.5], [x0 + 11.3, yP - 30, 66], COL.shield, perf);
+  box(g, [3, 8, 7], [x0 + 11.3, yP + 17, 66], COL.steel, perf);
+  box(g, [1.6, 21, 16], [x0 + 9, yP + 26, 33], COL.imu, imu);
+  box(g, [1.2, 4, 4], [x0 + 10.3, yP + 26, 33], COL.chip, imu);
+  g.add(new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(x0 + 11, yP + 26, 42), 30, 0x2f7de1, 8, 5));
+  const stand = { name: 'M3 standoff', note: '5 mm, into the wall’s M3 hole grid (10 mm pitch).' };
+  for (const [yy, zz] of [[yP - 40, 20], [yP + 40, 20], [yP - 40, 80], [yP + 40, 80]])
+    cylZ(g, 1.6, 5, [x0 - 2.5, yy, zz], COL.steel, stand).rotation.set(0, 0, Math.PI / 2);
+  part('ESP32 + IMU board', 30, [x0 + 5, yP, 50]);
+  label('ESP32 + IMU perf board', g, [x0 + 2, yP, 90], true);
+  label('IMU +Y ↑ along string', g, [x0 + 11, yP + 26, 76]);
+}
+function buildL298() {              // red L298N module on the left wall, boards face +x: drives the motor and makes the 5 V
+  const g = sideGroup('left', 'elec'), x0 = -BOARD_OFF, yc = DRV_Y, zc = 45, xd = d => x0 + d;
+  const info = { name: 'L298N motor driver module', note: '≈43 × 43 mm, ≈26 g. Drives the TT motor (ENA = PWM, IN1/IN2 = direction) and its 78M05 makes the ESP32’s 5 V from the pack (jumper on; 12.6 V full is just past its 12 V rating). On 5 mm standoffs.' };
+  box(g, [1.6, 43, 43], [xd(0.8), yc, zc], COL.l298, info);
+  box(g, [24, 22, 24], [xd(13.6), yc, zc + 2], COL.fw, info, { roughness: 0.5 });
+  for (const k of [-8, -4, 0, 4, 8]) box(g, [24, 1.2, 28], [xd(13.6), yc + k, zc + 2], COL.fw, info);   // heatsink fins
+  box(g, [10, 20, 10], [xd(6.6), yc, zc - 16], COL.term, info);                                        // 12 V in, GND, 5 V out
+  for (const s of [-1, 1]) box(g, [10, 12, 10], [xd(6.6), yc + s * 14, zc + 17], COL.term, info);       // motor out
+  for (const s of [-1, 1]) cylZ(g, 4.5, 12, [xd(7.6), yc + s * 14, zc - 2], COL.blk, info).rotation.set(0, 0, Math.PI / 2);
+  const stand = { name: 'M3 standoff', note: '5 mm, into the wall’s M3 hole grid (10 mm pitch).' };
+  for (const [dy, dz] of [[-18, -18], [18, -18], [-18, 18], [18, 18]]) cylZ(g, 1.6, 5, [x0 - 2.5, yc + dy, zc + dz], COL.steel, stand).rotation.set(0, 0, Math.PI / 2);
+  part('L298N module', 26, [xd(8), yc, zc]);
+  label('L298N: motor driver + 5 V', g, [xd(6), yc, zc + 38], true);
+  const wi = { name: '5 V leads', note: 'From the L298N 5 V terminal over the IMU to the ESP32 VIN. Ground goes to the ESP32 GND.' };
+  tube('elec', [[xd(9.5), yc + 6.7, 31], [xd(11), 40, 46], [xd(11), 14, 50], [xd(9), -4, 55]], 0.8, COL.red, wi);
+  tube('elec', [[xd(9.5), yc, 31], [xd(11.5), 38, 47], [xd(11.5), 12, 51], [xd(9.5), -6, 56]], 0.8, COL.blk, wi);
+}
+function buildMotorWires() {
+  const z = (GB_BOTTOM + GB_TOP) / 2, x0 = -BOARD_OFF, info = { name: 'Motor leads', note: 'Short + and − leads from the TT terminals to the L298N motor output, along the inboard side of the perf board.' };
+  tube('elec', [[-54.6, 4, z], [-56, 14, z + 4], [-56.5, 30, 40], [x0 + 8, DRV_Y - 17, 66]], 0.9, COL.red, info);
+  tube('elec', [[-54.6, -4, z], [-56, 10, z + 2], [-56.5, 28, 38], [x0 + 8, DRV_Y - 11, 66]], 0.9, COL.blk, info);
+}
+function buildPack(pos) {            // 12.6 V 3S pack in a tray under the plate, hung from four slotted tabs
+  const [x, y] = pos, t = TRAY, top = -PLATE_T, x0 = -BOARD_OFF;
+  const info = { name: 'Pack tray', note: 'Under the baseplate on four M3 tabs in slotted holes: slide it up to 30 mm in x and 1.5 mm in y to trim the balance. The cavity is 6 mm wider than the pack, so the pack can shift 3 mm each way or a wider one fits. Closed at the −x end, open at +x with a low lip and a zip-tie gate through the two porch holes.' };
+  const batt = { name: '12.6 V 3S Li-ion pack', note: `Assumed ${BATT.L} × ${BATT.W} × ${BATT.T} mm and about 150 g. Measure yours and edit PACK in make_frame_parts.py. It needs its protection board. The DC plug goes to a barrel-to-screw adapter at the L298N.` };
+  const cl = BATT.L + 2 * t.clr, cw = BATT.W + 2 * t.clr + t.xw, ch = BATT.T + t.clr, ow = cw + 2 * t.wall;
+  const zf = top - ch, zc = zf + BATT.T / 2, len = cl + t.wall + 6, xm = x - cl / 2 - t.wall + len / 2;
+  box('elec', [len, ow, t.floor], [xm, y, zf - t.floor / 2], COL.pla, info);                                    // floor with a porch past the pack end
+  for (const s of [-1, 1]) box('elec', [len, t.wall, ch], [xm, y + s * (cw + t.wall) / 2, top - ch / 2], COL.pla, info);   // side walls
+  box('elec', [t.wall, cw, ch], [x - cl / 2 - t.wall / 2, y, top - ch / 2], COL.pla, info);                      // closed end
+  box('elec', [2, cw, 3], [x + cl / 2 + 0.7, y, zf + 1.5], COL.pla, info);                                      // low lip
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) box('elec', [10, 8, 4], [x + sx * t.dx, y + sy * t.ty, top - 2], COL.pla, info);   // screw tabs
+  box('elec', [1.6, ow + 6, 2.6], [x + cl / 2 + 4, y, zf + ch / 2], COL.shield, { name: 'Zip tie', note: 'Closes the open end through the two porch holes.' });
+  box('elec', [BATT.L, BATT.W, BATT.T], [x, y, zc], COL.pack, batt);
+  box('elec', [0.6, 40, 14], [x + BATT.L / 2 + 0.3, y, zc], COL.tag, batt);
+  const sx = x - cl / 2 - t.wall - 6, wi = { name: 'Battery leads', note: 'Pack to the L298N power terminals, out of the closed end, up through the plate’s wire hole, under the perf board and up beside the driver.' };
+  tube('elec', [[sx, y + 3, zc], [(sx + WIRE_HOLE[0]) / 2, (y + WIRE_HOLE[1]) / 2 + 2, zc + 3], [WIRE_HOLE[0], WIRE_HOLE[1] + 1, -8], [WIRE_HOLE[0], WIRE_HOLE[1] + 1, 4], [-62.5, 6, 8], [-62.5, 30, 14], [x0 + 9.5, DRV_Y - 6.7, 31]], 0.8, COL.red, wi);
+  tube('elec', [[sx, y - 3, zc], [(sx + WIRE_HOLE[0]) / 2, (y + WIRE_HOLE[1]) / 2 - 2, zc + 3], [WIRE_HOLE[0] + 1, WIRE_HOLE[1] - 1, -8], [WIRE_HOLE[0] + 1, WIRE_HOLE[1] - 1, 4], [-61.5, 8, 7], [-61.5, 33, 13], [x0 + 9.5, DRV_Y, 31]], 0.8, COL.blk, wi);
+  part('Pack + tray', BATT.g, [x, y, zc]);
+  label('12.6 V pack tray (under plate)', 'elec', [x, y, zf - t.floor - 4], true);
+}
+function buildTrim(g, a) {           // steel washer stack on the right wall's inner face
+  const len = g / (Math.PI * 64 * RHO_STEEL), grp = sideGroup('right', 'elec');
+  const tz = 50;
+  cylZ(grp, 8, len, [a, 0, tz], COL.steel, { name: 'Trim weight', note: `${g.toFixed(0)} g of steel washers on an M3 bolt through the right wall. Add or remove washers to trim the balance.` },
+    { metalness: 0.6, roughness: 0.35 }).rotation.set(0, 0, Math.PI / 2);
+  part('Trim weight', g, [a, 0, tz]);
+  label(`Trim weight ${g.toFixed(0)} g`, grp, [a, 0, tz + 14], true);
+}
+function buildAxes(com) {
+  layers.axes.add(line([[0, 0, FLOOR_Z], [0, 0, HOOK_Z + 30]], lineMat(0x2f7de1, true)));
+  const s = mesh('axes', new THREE.SphereGeometry(4.5, 24, 16), 0xe25b3c, { name: 'Centre of mass', note: 'Estimated CoM of the whole hanging assembly.' }, { roughness: 0.4 });
+  s.position.set(...com); s.castShadow = false;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(8, 0.8, 8, 40), new THREE.MeshBasicMaterial({ color: 0xe25b3c }));
+  ring.position.set(...com); layers.axes.add(ring);
+  layers.axes.add(line([[0, 0, com[2]], com], new THREE.LineBasicMaterial({ color: 0xe25b3c })));
+  label('CoM', 'axes', [com[0] + 14, com[1], com[2] + 6]);
+}
+
+// ---------- physics ----------
+function solve() {
+  let M = 0, sx = 0, sy = 0, sz = 0;
+  for (const p of parts) { M += p.g; sx += p.g * p.c[0]; sy += p.g * p.c[1]; sz += p.g * p.c[2]; }
+  return { M, com: [sx / M, sy / M, sz / M] };
+}
+const jb = () => parts.filter(p => !p.rotor).reduce((s, p) => s + p.g / 1000 * ((p.c[0] ** 2 + p.c[1] ** 2) * 1e-6) + p.izz, 0);
+function sci(v, d = 2) { const e = Math.floor(Math.log10(Math.abs(v))); const sup = String(e).replace(/-/g, '⁻').replace(/\d/g, c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]); return `${(v / 10 ** e).toFixed(d)} × 10${sup}`; }
+const hangQ = new THREE.Quaternion();
+function readouts(M, com, clamped, trim) {
+  const off = Math.hypot(com[0], com[1]), arm = HOOK_Z - com[2], tilt = Math.atan2(off, arm) * 180 / Math.PI;
+  const J = jb(), h = JW * W250, rate = h / (J + JW) * 180 / Math.PI;
+  const set = (id, t) => { document.getElementById(id).textContent = t; };
+  set('r-mass', `${M.toFixed(0)} g`); set('r-off', `${off.toFixed(1)} mm`); set('r-tilt', `${tilt.toFixed(1)}°`);
+  set('r-arm', `${arm.toFixed(0)} mm`); set('r-comz', `${com[2].toFixed(0)} mm`);
+  set('r-trim', trim > 0.05 ? `${trim.toFixed(0)} g` : '–');
+  set('r-jb', `${sci(J)} kg·m²`); set('r-h', `${sci(h)} N·m·s`); set('r-rate', `${rate.toFixed(0)} °/s`);
+  let cls, txt, msg;
+  if (tilt < 1) [cls, txt, msg] = ['good', 'Aligned', 'Spin axis hangs along the string.'];
+  else if (tilt < 3) [cls, txt, msg] = ['warn', 'Check', 'Small tilt: trim before testing.'];
+  else [cls, txt, msg] = ['bad', 'Off-axis', 'Hangs visibly tilted.'];
+  if (clamped && !(trim > 0) && tilt >= 1) msg = 'The pack tray is at the end of its slots. Keep the right wall and turn on the trim weight.';
+  else if (!cfg.batt && tilt >= 1) msg += ' The pack tray would fix it.';
+  const pill = document.getElementById('pill');
+  pill.className = 'pill ' + cls; pill.textContent = txt; document.getElementById('pill-note').textContent = msg;
+  hangQ.setFromUnitVectors(new THREE.Vector3(com[0], com[1], com[2] - HOOK_Z).normalize(), new THREE.Vector3(0, 0, -1));
+}
+
+// ---------- configuration + build ----------
+const cfg = { walls: new Set(['left', 'right']), batt: true, trim: true };
+function build() {
+  clear();
+  SIDES.forEach(s => { if (!cfg.walls.has(s)) sideState[s].z = LIFT; });   // removed panels slide back in from the top next time
+  buildBase(); buildPillars(); buildLid(); buildMotor(); buildFlywheel();
+  for (const s of SIDES) if (cfg.walls.has(s)) buildWall(s);
+  buildElectronics(); buildMotorWires();
+  buildL298();
+  let clamped = false, trim = 0;
+  if (cfg.batt) {
+    const { M, com } = solve();
+    const want = [-com[0] * M / BATT.g, -com[1] * M / BATT.g];
+    const lo = [TRAY.x0, -TRAY.ytr], hi = [TRAY.x1, TRAY.ytr];
+    const pos = want.map((v, i) => Math.max(lo[i], Math.min(hi[i], v)));
+    clamped = pos.some((v, i) => Math.abs(v - want[i]) > 0.5);
+    buildPack(pos);
+  }
+  if (cfg.trim && cfg.walls.has('right')) {
+    const { M, com } = solve(), need = -com[0] * M;          // g·mm still to cancel along x
+    if (need > 0) {
+      let a = 66;
+      for (let i = 0; i < 3; i++) { trim = need / a; a = C - WALL_T / 2 - trim / (Math.PI * 64 * RHO_STEEL) / 2; }
+      buildTrim(trim, a);
+    }
+  }
+  const { M, com } = solve();
+  buildAxes(com); readouts(M, com, clamped, trim);
+  makeLabels(); applyToggles();
+}
+
+// ---------- labels, tooltip ----------
+const labelsEl = document.getElementById('labels');
+function makeLabels() { for (const d of labelDefs) { const el = document.createElement('div'); el.className = 'lbl' + (d.isNew ? ' new' : ''); el.textContent = d.text; labelsEl.appendChild(el); d.el = el; } }
+const visibleChain = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+const tmpV = new THREE.Vector3();
+function placeLabels(w, h) {
+  const show = T('t-labels').checked;
+  for (const d of labelDefs) {
+    if (!show || !visibleChain(d.anchor)) { d.el.hidden = true; continue; }
+    d.anchor.getWorldPosition(tmpV); tmpV.project(camera);
+    if (tmpV.z > 1) { d.el.hidden = true; continue; }
+    d.el.hidden = false;
+    d.el.style.transform = `translate(${((tmpV.x + 1) / 2 * w).toFixed(1)}px, ${((1 - tmpV.y) / 2 * h).toFixed(1)}px) translate(-50%, -130%)`;
+  }
+}
+const tip = document.getElementById('tip'), ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let hover = null;
+canvas.addEventListener('pointermove', e => { const r = canvas.getBoundingClientRect(); hover = { x: e.clientX - r.left, y: e.clientY - r.top, w: r.width, h: r.height }; });
+canvas.addEventListener('pointerleave', () => { hover = null; tip.hidden = true; });
+function doTip() {
+  if (!hover) return;
+  mouse.set(hover.x / hover.w * 2 - 1, -(hover.y / hover.h) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(platform.children, true).find(i => i.object.isMesh && i.object.userData.info && visibleChain(i.object));
+  if (!hit) { tip.hidden = true; return; }
+  const inf = hit.object.userData.info;
+  tip.textContent = '';
+  const b = document.createElement('b'); b.textContent = inf.name; tip.appendChild(b);
+  const n = document.createElement('div'); n.textContent = inf.note; tip.appendChild(n);
+  tip.hidden = false;
+  tip.style.left = Math.max(8, Math.min(hover.x + 14, hover.w - tip.offsetWidth - 8)) + 'px';
+  tip.style.top = Math.max(8, Math.min(hover.y + 14, hover.h - tip.offsetHeight - 8)) + 'px';
+}
+
+// ---------- UI wiring ----------
+const T = id => document.getElementById(id);
+function applyToggles() {
+  layers.walls.visible = T('t-walls').checked; layers.pillars.visible = T('t-pillars').checked;
+  layers.trusses.visible = T('t-trusses').checked; layers.elec.visible = T('t-elec').checked;
+  layers.motor.visible = T('t-motor').checked; layers.fw.visible = T('t-fw').checked;
+  layers.axes.visible = plumb.visible = T('t-axes').checked;
+}
+function syncUI() {
+  for (const s of SIDES) { const cb = T('w-' + s); cb.checked = cfg.walls.has(s); cb.disabled = s === 'left'; }
+  T('tag-right').textContent = cfg.trim ? 'trim weight' : '';
+}
+['t-walls', 't-pillars', 't-trusses', 't-elec', 't-motor', 't-fw', 't-labels', 't-axes'].forEach(id => T(id).addEventListener('change', applyToggles));
+['right', 'back', 'front'].forEach(s => T('w-' + s).addEventListener('change', e => { e.target.checked ? cfg.walls.add(s) : cfg.walls.delete(s); syncUI(); build(); }));
+T('cfg-batt').addEventListener('change', e => { cfg.batt = e.target.checked; build(); });
+T('cfg-trim').addEventListener('change', e => { cfg.trim = e.target.checked; syncUI(); build(); });T('reset').addEventListener('click', () => { camera.position.copy(HOME.pos); controls.target.copy(HOME.target); controls.update(); });
+T('clean').addEventListener('click', e => {      // clean view: hides the part labels, the hover box, the hint and any load warning
+  const on = stage.classList.toggle('clean');
+  e.currentTarget.textContent = on ? 'Show labels' : 'Hide labels'; e.currentTarget.setAttribute('aria-pressed', String(on));
+});
+syncUI();
+
+// ---------- theme ----------
+function themeColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = n => new THREE.Color(cs.getPropertyValue(n).trim() || '#888');
+  renderer.setClearColor(v('--stage'));
+  if (grid) { scene.remove(grid); grid.geometry.dispose(); }
+  grid = new THREE.GridHelper(800, 40, v('--grid1'), v('--grid2'));
+  grid.rotation.x = Math.PI / 2; grid.position.z = FLOOR_Z - 0.1; scene.add(grid);
+}
+themeColors();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeColors);
+new MutationObserver(themeColors).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+// ---------- resize + loop ----------
+let W = 1, Hh = 1;
+new ResizeObserver(() => { W = stage.clientWidth; Hh = stage.clientHeight; renderer.setSize(W, Hh, false); camera.aspect = W / Math.max(Hh, 1); camera.updateProjectionMatrix(); }).observe(stage);
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ident = new THREE.Quaternion();
+const ease = (cur, target, dt) => reduce ? target : cur + (target - cur) * (1 - Math.exp(-dt * 6));
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  controls.update();
+  if (T('t-spin').checked) spinner.rotation.z += dt * 2 * Math.PI * 1.2;
+  const out = T('t-slide').checked;
+  for (const s of SIDES) {
+    const st = sideState[s], target = cfg.walls.has(s) && !out ? 0 : LIFT;
+    st.z = ease(st.z, target, dt);
+    for (const g of sideGroups[s] || []) g.position.z = st.z;
+  }
+  const up = T('t-lid').checked;                              // rods slide out first, then the lid lifts; reversed on the way back
+  lidState.pin = ease(lidState.pin, up || lidState.lid > 2 ? PIN_OUT : 0, dt);
+  lidState.lid = ease(lidState.lid, up && lidState.pin > PIN_OUT * 0.9 ? LID_PULL : 0, dt);
+  if (lidG) lidG.position.z = lidState.lid;
+  for (const p of pinList) p.g.position.set(p.base[0] + p.dir[0] * lidState.pin, p.base[1] + p.dir[1] * lidState.pin, p.base[2]);
+  const target = T('t-hang').checked ? hangQ : ident;
+  if (reduce) pivot.quaternion.copy(target); else pivot.quaternion.slerp(target, 1 - Math.exp(-dt * 5));
+  doTip(); placeLabels(W, Hh);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+Promise.all([loadMesh('flywheel.json'), loadMesh('tt_case.json')])
+  .then(([fw, cs]) => { geoFW = fw; geoCase = cs; })
+  .catch(err => { const e = document.createElement('div'); e.className = 'err'; e.textContent = 'Couldn’t load the flywheel and case models, showing simple shapes instead.'; stage.appendChild(e); console.warn(err); })
+  .finally(() => { build(); requestAnimationFrame(frame); });
+})();
+</script>

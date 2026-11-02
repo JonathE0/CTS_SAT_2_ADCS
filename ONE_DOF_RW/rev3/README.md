@@ -11,29 +11,41 @@ The tray snaps onto the rev 2 baseplate without screws, and **the baseplate is u
 - **Trim:** it slides along the slits between tray x = 5 and 25 mm.
 - **The leaves:** each is 8 mm wide and 2 mm thick, about 22.6 mm free length, with a 1.1 mm barb that has 45 degree ramps on both sides. The barb reaches 0.9 mm over the plate. Pushing on or pulling off bends a leaf 1.2 mm, about 0.7 % strain, about 4 N per leaf, 17 N for all four, roughly the pull of a 1.7 kg weight. The tray plus pack weighs about 180 g (1.8 N), so it stays put, even in a bump. Those figures are an estimate with E = 2.5 GPa; the first print tells the truth. If it is too stiff or too loose, change `LEAF_T` (1.6 softer, 2.4 stiffer) or `BARB` in the script.
 - **Printing:** floor on the bed, no supports. The leaves stand up from a root block with 45 degree fillets, the barbs have 45 degree ramps, and I checked the whole tray: 0.02 mm2 of overhang steeper than 45 degrees, that is nothing. PETG is the better material for the leaves; they bend across the layers, which is PLA's weak direction, but only 0.7 % strain, so PLA works too.
-- **Tray changes after the first print:** all outer corners and the closed-end inside corners are filleted (3 mm). The low stopper sits at the very edge of the porch, so the pack can sit out to it (room for about 74 mm). The zip-tie holes are gone. A **wire hole** through the -y side wall, 25 mm from the closed end between the two leaves: a capsule 13 mm wide and 18 mm tall (the DC plug passes), round at the bottom and with a 45 degree roof so it prints without support. `WIRE_SIDE = 1` puts it on the +y wall, `WIRE_X`, `WIRE_D`, `WIRE_EXT` move and size it.
+- **Tray changes after the first print:** all outer corners and the closed-end inside corners are filleted (3 mm). The low stopper sits at the very edge of the porch, so the pack can sit out to it (room for about 74 mm). The zip-tie holes are gone. A **wire hole** through the -y side wall, centred 27 mm from the closed end between the two leaves: an oval 24 mm wide and 16 mm tall, sitting on the floor, so the plug and wires have room to slide along the wall. The crown of an oval has no 45 degree roof: it bridges about 20 mm, which PLA usually manages with good cooling but may sag a little; if it does, print the tray with supports under the crown or make the oval narrower (`WIRE_W`) or lower (`WIRE_H`). `WIRE_SIDE = 1` puts it on the +y wall; `WIRE_X` moves it.
 - The tray keeps its 6 mm of extra width: the pack shifts 3 mm each way inside it.
 - Written for the rev 2 slits. If your printed plate has different slit sizes (an older version had them 8.4 mm wide), the leaves still pass but the barb overlap changes, so measure your slits.
 - Changed file: `printing/print_ready/stl/plates/plate5_pack_tray.stl` (and the single part in `stl/parts/`). Nothing else on the plates changed from rev 2.
 
 ## Weight basket
 
-`mechanical/weight_basket/make_weight_basket.py` makes `Weight_Basket.stl` (also in `printing/print_ready/stl/`): two hooks go into the right wall and a small open basket on the outside holds trim weights.
+`mechanical/weight_basket/make_weight_basket.py` makes `Weight_Basket.stl` (also in `printing/print_ready/stl/`): two J-hooks hang over the rib under the two top-middle windows and carry a wide open basket on the outside, below the windows.
 
-- **Hooks:** two 22.2 mm square plug-hooks go into the two top-middle windows (23 mm, y = +-15, z = 55). Eight 0.5 mm crush ribs give a light press fit (0.1 mm interference, 2.8 mm3 overlap in the CAD). Pull it straight out to remove.
-- **Basket:** 60 mm wide, 16 mm deep, 29 mm tall, 2 mm walls, 2.5 mm floor, about 20 cm3 inside, 3 mm corner fillets. Drop in washers, nuts or lead shot. About 18 g empty.
-- **Print:** upright as it sits (basket floor on the bed), no supports. The only overhang is the 1.5 mm flat under each plug.
-- **Balance:** the viewer counts the empty basket in (about 18 g at x = 86). Untick "Weight basket" to see the plain wall.
-- Replaces the earlier plug-and-arm hook (removed).
+- **Hooks:** each is a J. An arm lies on the sill of a window (y = +-15, z = 55), a 3 mm lip on the inside drops 12 mm behind the 7 mm rib (it wraps the whole rib and ends 5 mm below it), and a 16 mm strap on the outside runs down from the arm to the basket. The rib sits in the pocket, so the weight cannot pull it off outward. 0.3 mm clearance, 0 mm3 overlap with the wall in the CAD.
+- **On and off:** lift it about 12 mm, push the lips through the windows, lower it. Reverse to remove.
+- **Basket:** 90 mm wide, 18 mm deep, 25.5 mm tall (z 18 to 43.5), 2 mm walls, 2.5 mm floor, about 26 g empty.
+- **Print:** upright as it sits (basket floor on the bed), with auto supports under the hooks' arms and lips (the hooks stick out behind the back face, so it cannot lie on its back). Hook edges, the basket corners and the floor-to-wall joints are filleted (45 degree fillets at the floor).
+- **Balance:** the viewer counts the empty basket in (about 26 g at x = 86). Untick "Weight basket" to see the plain wall.
 
-## Table mount
+## Table hook and slider clamp
 
-`mechanical/table_mount/make_table_mount.py` makes `Table_Mount.stl`: a C-clamp for the far end of the string.
+`mechanical/table_hook/make_table_hook.py` makes `Table_Hook.stl` (hook alone); `make_table_slider.py` makes `Table_Hook_Slider.stl` (the hook with the slider printed in place on it), `Slider_Screw.stl`, `Slider_Pad.stl` and `Slider_Pin.stl`. All are also in `printing/print_ready/stl/`. The far end of the string hangs from a square table edge. Replaces the C-clamp from earlier in rev 3.
 
-- **Clamp:** fits a table top up to 40 mm thick (42 mm gap), 30 mm wide, 45 mm deep. An M8 bolt through the bottom jaw (hex nut pocket, 13.6 mm across flats) pushes up on the underside of the table. You need one M8 x 40 bolt and nut; add a rubber or felt pad under the table to protect the surface.
-- **Eye:** the same eye as the lid (18 mm wide, 10 mm thick, 7 mm hole) on the top jaw, 20 mm up, with a 45 degree flared foot.
-- **Print:** lie it on its side (the C flat on the bed), no supports, so the layers run along the clamp's bending direction. About 64 g.
-- Unchecked: not tested under load. The clamp's bolt, not the plastic, holds the string tension; keep the string pull small and mostly vertical.
+- **Hook:** an L-bracket. A 45 mm tab lies on the table top, a 90 degree bend (5 mm plate, 30 mm wide) carries it down the face for 96.5 mm, and a short stub at the bottom (16 mm wide, 10 mm thick, round end, flared into the plate like the lid's eye) has a 7 mm pinhole along the table edge. The string leaves the hole 102 mm below the table top and 2.5 mm out from the face. Nothing depends on the table thickness. About 28 g.
+- **Holding it:** the weight hangs from the bend, and the string hangs almost straight below the plate (2.5 mm offset), so little pushes the plate sideways and friction is hardly needed. Use the slider, or stick rubber or felt on the tab and plate. The rig is about 0.5 kg, so the load is about 5 N.
+- **Slider clamp:** the rider wraps the plate and runs a shelf under the table. A printed pin through the rider and one of the plate's five 5.4 mm holes (10 mm apart) sets the height; the screw (6 mm pitch, one start, cam-shaped so the flanks never overhang more than 45 degrees and it prints without supports) takes up the last 10 mm; the pad (28 mm, with a 9.2 mm socket that fits the screw's 9 mm peg) spreads the load. Stick rubber on the pad's flat face and put a drop of glue in its socket. Fits tables 5 to 45 mm thick.
+- **One print:** `Table_Hook_Slider.stl` has the rider already around the plate with a 0.4 mm gap all round (0 mm3 overlap in the CAD). Print it on its side with supports (the upper side wall and the nut boss hang over the plate), snap the supports off, and slide the rider up and down to free it. If a layer or two have fused, twist it with a flat screwdriver; if the gap fuses a lot, raise `CL` in `make_table_slider.py` to 0.5.
+- **Separate prints:** screw knob down, no supports; pad flat; pin lying down. Weights: hook and rider 57 g, screw 13 g, pad 4 g, pin 0.5 g.
+- **Checks:** in the CAD at a 35 mm table nothing overlaps (hook, rider, table, screw, pad, pin), and the threads mesh with 0.35 mm clearance. Nothing printed or load-tested; printed threads often need a first turn with force, and PLA creeps, so recheck the clamp after a day. The string must hang straight down.
+
+## One build plate
+
+`mechanical/plate_rev3/make_plate.py` orients every new or changed part for printing and lays them out on one plate (`printing/print_ready/stl/Rev3_plate.stl`); `slice_plate.ps1` slices it on the stock CORE One presets (0.20 mm BALANCED, Prusament PLA) to `printing/print_ready/gcode/Rev3_all_parts.gcode` and `3mf/Rev3_all_parts.3mf`. 4 h 04 min, 114 g, all inside 220 x 162 mm of the 250 x 220 bed, two rows (wheel, tray, basket; then hook, screw, pad, pin) 6 mm apart (PrusaSlicer's own arranger crashed on this set, so the layout is by script).
+
+- **On the plate:** wheel (100 mm), pack tray, weight basket, hook with the slider, screw, pad and pin. Not on it: the unchanged rev 2 parts, and the hook without the slider (`Table_Hook.stl`).
+- **Orientation:** hook and slider on their side, basket upright, tray floor down, wheel face down, screw knob down, pad flat, pin head down.
+- **Supports:** automatic, only where an overhang is shallower than 35 degrees from horizontal. They land under the basket's hooks and the slider (about 8,500 moves under the hook, 4,400 under the basket), and almost nothing under the screw, wheel or tray. Check the preview before printing.
+- **Orientations tried alone:** basket upright 39 min and 20 g (best; lying down 51 min to 1 h 15 min and 26 to 29 g); hook with slider on its side 1 h 12 min and 31 g (best; standing as assembled 2 h 23 min and 68 g). The layout is a hand-placed grid, about half the bed area covered, not a true packing.
+- **Print order:** nothing to change. If the plate is too tall for your comfort, delete parts in PrusaSlicer; the time is mostly the wheel and the hook.
 
 ## What changed
 

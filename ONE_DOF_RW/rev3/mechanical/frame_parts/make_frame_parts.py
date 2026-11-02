@@ -86,7 +86,7 @@ WIN_X, WIN_Y, WIN_R = (5.0, 66.0), (46.0, 66.0), 6.0
 PACK = (70.0, 58.0, 21.0)
 PACK_CLR, TRAY_WALL, TRAY_FLOOR = 0.5, 2.5, 2.5
 R_TRAY = 3.0                                       # fillet: tray outer and closed-end cavity corners
-WIRE_D, WIRE_X, WIRE_SIDE = 13.0, 25.0, -1         # wire hole through a side wall: diameter, distance from the closed end, which side (-1 = -y)
+WIRE_W, WIRE_H, WIRE_X, WIRE_SIDE = 24.0, 16.0, 27.0, -1   # wire hole through a side wall: an oval, width along the wall, height, distance of its centre from the closed end, which side (-1 = -y)
 PACK_EXTRA_W = 6.0                                 # extra cavity width, so a pack can shift 3 mm each way or a wider one fits
 TAB_DX, TAB_Y = 28.0, 39.0                         # the four spring leaves sit under the plate's slits, x = +-28 from the tray centre, y = +-39
 SLIT_X, SLIT_YT = (0.0, 30.0), 1.5                 # the plate's four slits, unchanged from rev 2: x = +-28 + 0..30, y = +-39, 6.4 wide
@@ -94,7 +94,6 @@ TRAY_X, TRAY_X_TRAVEL = 20.0, (5.0, 25.0)          # default centre and the leav
 LEAF_X, LEAF_T, LEAF_CLR = 8.0, 2.0, 0.2           # leaf width and thickness; its outer face sits 0.2 mm inside the slit's outer edge
 BARB, BARB_FLAT = 1.1, 0.4                         # barb: 45 degree ramps up and down, protrudes 1.1 mm, 0.4 mm flat tip
 ROOT_H, ROOT_FILLET = 6.0, 3.0                     # root block at the foot of each leaf, and the 45 degree fillets either side of the leaf
-WIRE_EXT = 5.0                                     # the wire hole is this much taller than round: a 13 mm capsule with a 45 degree roof
 
 
 def box(x0, x1, y0, y1, z0, z1):
@@ -239,7 +238,7 @@ def pack_tray():
     """Tray under the plate, centred on x=0, y=0. Closed at -x, open at +x with a low stopper at the very end of the porch.
     Four spring leaves with a barb snap up through the plate's slits and click over their outer edges; pull the tray down
     firmly (or squeeze the barbs in) to take it off. Print as it sits, floor on the bed: every overhang is 45 degrees or
-    less, and the wire hole has a 45 degree roof, so no supports."""
+    less, and the wire hole is a wide oval whose crown bridges about 20 mm."""
     L, W, T = PACK
     cl, cw, ch = L + 2 * PACK_CLR, W + 2 * PACK_CLR + PACK_EXTRA_W, T + PACK_CLR           # cavity
     top = -PLATE_T
@@ -269,11 +268,9 @@ def pack_tray():
         leaves += [h, h.rotate((0, 0, 180))]
     body = body + union(leaves)
 
-    # wire hole in a side wall: a capsule 13 wide, straight sides, round bottom on the floor, 45 degree roof
-    r = WIRE_D / 2
-    zb = z0 + TRAY_FLOOR + r
-    arc = [(r * math.cos(math.radians(t)), zb + r * math.sin(math.radians(t))) for t in np.linspace(180, 360, 24)]
-    outline = arc + [(r, zb + WIRE_EXT), (0.0, zb + WIRE_EXT + r), (-r, zb + WIRE_EXT)]
+    # wire hole in a side wall: an oval WIRE_W wide and WIRE_H tall sitting on the floor (the crown is a bridge of about 20 mm)
+    zc_ = z0 + TRAY_FLOOR + WIRE_H / 2
+    outline = [(WIRE_W / 2 * math.cos(math.radians(t)), zc_ + WIRE_H / 2 * math.sin(math.radians(t))) for t in np.linspace(0, 360, 72, endpoint=False)]
     cutter = prism(outline, 0, TRAY_WALL + 2).rotate((90, 0, 0))                           # profile in x-z, runs toward -y
     xh = -cl / 2 + WIRE_X
     if WIRE_SIDE < 0:

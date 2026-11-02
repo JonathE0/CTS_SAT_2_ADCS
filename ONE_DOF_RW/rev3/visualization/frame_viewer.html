@@ -104,6 +104,7 @@ ol.notes b { font-weight: 600; }
         <label class="tg wide"><input type="checkbox" id="cfg-batt" checked>12.6 V pack tray, auto-placed under the plate</label>
         <label class="tg wide"><input type="checkbox" id="cfg-trim" checked>Trim weight on the right wall, auto-sized</label>
         <label class="tg wide"><input type="checkbox" id="cfg-hook" checked>Weight basket on the right wall, for extra washers</label>
+        <label class="tg wide"><input type="checkbox" id="cfg-table" checked>Table-edge hook holding the top end of the string</label>
       </div>
     </section>
 
@@ -220,7 +221,7 @@ renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadow
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(34, 1, 1, 6000);
 camera.up.set(0, 0, 1);
-const HOME = { pos: new THREE.Vector3(440, -480, 330), target: new THREE.Vector3(0, 0, 85) };
+const HOME = { pos: new THREE.Vector3(760, -840, 520), target: new THREE.Vector3(0, 0, 290) };
 camera.position.copy(HOME.pos);
 const controls = new THREE.OrbitControls(camera, canvas);
 controls.target.copy(HOME.target); controls.enableDamping = true; controls.dampingFactor = 0.08;
@@ -518,28 +519,60 @@ function buildPack(pos) {            // 12.6 V 3S pack in a tray under the plate
   }
   box('elec', [BATT.L, BATT.W, BATT.T], [x, y, zc], COL.pack, batt);
   box('elec', [0.6, 40, 14], [x + BATT.L / 2 + 0.3, y, zc], COL.tag, batt);
-  const hx = x - cl / 2 + 25, hz = zf + ch / 2;                                                                  // wire hole in the -y side wall
-  const wr = 6.5, wb = zf + wr, ws = new THREE.Shape();             // wire hole: capsule 13 wide, 18 tall, 45 degree roof, in the -y wall
-  for (let a = 180; a <= 360; a += 15) { const q = [hx + wr * Math.cos(a * Math.PI / 180), wb + wr * Math.sin(a * Math.PI / 180)]; a === 180 ? ws.moveTo(...q) : ws.lineTo(...q); }
-  ws.lineTo(hx + wr, wb + 5); ws.lineTo(hx, wb + 5 + wr); ws.lineTo(hx - wr, wb + 5); ws.closePath();
+  const hx = x - cl / 2 + 27, hz = zf + ch / 2;                                                                  // wire hole in the -y side wall
+  const ws = new THREE.Shape();                                      // wire hole: oval 24 wide, 16 tall, sitting on the floor, in the -y wall
+  for (let a = 0; a < 360; a += 10) { const q = [hx + 12 * Math.cos(a * Math.PI / 180), zf + 8 + 8 * Math.sin(a * Math.PI / 180)]; a === 0 ? ws.moveTo(...q) : ws.lineTo(...q); }
   const wg = new THREE.ExtrudeGeometry(ws, { depth: 0.4, bevelEnabled: false }); wg.rotateX(Math.PI / 2);
-  mesh('elec', wg, COL.blk, { name: 'Wire hole', note: 'Capsule hole in the −y side wall, 13 mm wide and 18 mm tall with a 45° roof so it prints without support, 25 mm from the closed end between the two leaves. The pack’s wires and DC plug go out here.' }).position.set(0, -ow / 2, 0);
+  mesh('elec', wg, COL.blk, { name: 'Wire hole', note: 'Oval hole in the −y side wall, 24 mm wide and 16 mm tall, sitting on the floor. Its crown bridges about 20 mm when printed, so look at the first print. Its centre is 27 mm from the closed end, clear of the leaves. The pack’s wires and DC plug go out here.' }).position.set(0, -ow / 2, 0);
   const sx = x - cl / 2 - t.wall - 6, wi = { name: 'Battery leads', note: 'Pack to the L298N power terminals: out of the hole in the −y side wall, up through the plate’s wire hole, through a window in the left wall and up the outside to the board.' };
   tube('elec', [[x - cl / 2 + 4, y - cw / 2 + 3, zc], [hx, y - cw / 2 + 3, zc], [hx, -(ow / 2) - 5, hz], [(hx + WIRE_HOLE[0]) / 2, (-(ow / 2) - 5 + WIRE_HOLE[1]) / 2, zc + 4], [WIRE_HOLE[0], WIRE_HOLE[1] + 1, -8], [WIRE_HOLE[0], WIRE_HOLE[1] + 1, 4], [-62, 6, 6], [-66, 30, 8], [-75, 38, 15], [-85, 39, 17], [-90, 42, 24], [MX(x0 + 9.5), DRV_Y - 6.7, 31]], 0.8, COL.red, wi);
   tube('elec', [[x - cl / 2 + 4, y - cw / 2 + 5, zc], [hx + 1.5, y - cw / 2 + 5, zc], [hx + 1.5, -(ow / 2) - 5, hz + 1], [(hx + WIRE_HOLE[0]) / 2, (-(ow / 2) - 5 + WIRE_HOLE[1]) / 2 + 2, zc + 4], [WIRE_HOLE[0] + 1, WIRE_HOLE[1] - 1, -8], [WIRE_HOLE[0] + 1, WIRE_HOLE[1] - 1, 4], [-61, 8, 5], [-65, 32, 7], [-75, 40, 14], [-85, 41, 16], [-90, 46, 24], [MX(x0 + 9.5), DRV_Y, 31]], 0.8, COL.blk, wi);
   part('Pack + tray', BATT.g, [x, y, zc]);
   label('12.6 V pack tray (under plate)', 'elec', [x, y, zf - t.floor - 4], true);
 }
-function buildHook() {               // weight basket on the outside of the right wall, plug-hooks in the two top-middle windows
+function buildHook() {               // weight basket hanging below the two top-middle windows of the right wall, J-hooks over the sill rib
   const g = sideGroup('right', 'elec');
-  const info = { name: 'Weight basket', note: 'Two 22.2 mm plug-hooks go into the two top-middle windows of the right wall (light press fit from 0.5 mm crush ribs). A 60 mm wide open basket on the outside holds steel washers, nuts or lead shot to trim the balance. Printed upright, no supports. About 18 g empty.' };
-  for (const sy of [-1, 1]) box(g, [2.9, 22.2, 22.2], [75.05, sy * 15, 55], COL.pla, info);          // plug-hooks
-  box(g, [3, 60, 29], [78, 0, 55.5], COL.pla, info);                                                  // flange / basket back
-  box(g, [16, 60, 2.5], [86, 0, 42.25], COL.pla, info);                                               // basket floor
-  box(g, [16, 2, 29], [86, -29, 55.5], COL.pla, info); box(g, [16, 2, 29], [86, 29, 55.5], COL.pla, info);   // side walls
-  box(g, [2, 60, 29], [95, 0, 55.5], COL.pla, info);                                                  // front wall
-  part('Weight basket', 18.5, [86, 0, 55]);
-  label('Weight basket (drop washers in)', g, [88, 0, 72], true);
+  const info = { name: 'Weight basket', note: 'Two J-hooks hang over the 7 mm rib under the two top-middle windows of the right wall: an arm lies on each window sill, a 3 mm lip drops behind the rib on the inside, 5 mm past its bottom edge,, and a strap on the outside carries the basket, which hangs below the windows in front of the wall. 90 mm wide, open top, for steel washers, nuts or lead shot. Lift it 12 mm to put it on or take it off. Print it on its back, no supports. About 26 g empty.' };
+  for (const sy of [-1, 1]) {
+    box(g, [6.1, 16, 8], [73.75, sy * 15, 47.8], COL.pla, info);          // arm through the window, on the sill
+    box(g, [3, 16, 20.3], [71.9, sy * 15, 41.65], COL.pla, info);         // lip behind the rib, 5 mm past its bottom edge
+    box(g, [3, 16, 33.8], [78.3, sy * 15, 34.9], COL.pla, info);          // strap from the arm down to the basket
+  }
+  box(g, [3, 90, 25.5], [78.3, 0, 30.75], COL.pla, info);                 // basket back
+  box(g, [18, 90, 2.5], [86.8, 0, 19.25], COL.pla, info);                 // basket floor
+  box(g, [18, 2, 25.5], [86.8, -44, 30.75], COL.pla, info); box(g, [18, 2, 25.5], [86.8, 44, 30.75], COL.pla, info);   // side walls
+  box(g, [2, 90, 25.5], [95.8, 0, 30.75], COL.pla, info);                 // front wall
+  part('Weight basket', 25.6, [86, 0, 31]);
+  label('Weight basket (drop washers in)', g, [88, 0, 50], true);
+}
+let tableG = null;
+function buildTable() {              // L-shaped hook on a square table edge: tab on the top, 90 degree bend, plate down the face, J-hook for the string, adjustable slider clamp
+  if (tableG) { world.remove(tableG); tableG = null; }
+  if (!cfg.table) return;
+  const g = tableG = new THREE.Group(); world.add(g);
+  const ZT = HOOK_Z + 420 + 90, XF = -10;                                   // table top z and face x: the string leaves the hook 90 mm below the top, 10 mm from the face
+  const X = lx => XF + lx, Z = lz => ZT + lz;
+  const info = { name: 'Table hook', note: 'An L-bracket that hangs over a square table edge: a 45 mm tab lies on the table top, a 90 degree bend carries the 5 mm plate down the face, and a small round-ended stub at the bottom, 16 mm wide with a 7 mm pinhole, carries the string like the lid eye. It does not depend on the table thickness. The plate has five pin holes, 10 mm apart, for the slider. Put a rubber or felt pad on the tab and the plate so it does not slide. Print it lying on its side, no supports. About 39 g.' };
+  const pts = [[-43.5, 0], [-1.5, 0], [0, -1.5], [0, -96.5], [5.0, -96.5], [5.0, 1.0], [4.94, 1.69], [4.76, 2.37], [4.46, 3.0], [4.06, 3.57], [3.57, 4.06], [3.0, 4.46], [2.37, 4.76], [1.69, 4.94], [1.0, 5.0], [-43.5, 5.0], [-45.0, 3.5], [-45.0, 1.5]];
+  const stubPts = [[0, -90.0], [5.0, -90.0], [5.0, -96.5], [10.5, -102.0], [10.33, -103.66], [9.81, -105.25], [8.97, -106.7], [7.85, -107.95], [6.5, -108.93], [4.97, -109.61], [3.34, -109.96], [1.66, -109.96], [0.03, -109.61], [-1.5, -108.93], [-2.85, -107.95], [-3.97, -106.7], [-4.81, -105.25], [-5.33, -103.66], [-5.5, -102.0], [-5.5, -102.0], [0, -96.5]];
+  const sh = new THREE.Shape(pts.map(q => new THREE.Vector2(X(q[0]), Z(q[1]))));
+  const hg = new THREE.ExtrudeGeometry(sh, { depth: 30, bevelEnabled: false }); hg.rotateX(Math.PI / 2); hg.translate(0, 15, 0);
+  mesh(g, hg, COL.truss, info);
+  const ss = new THREE.Shape(stubPts.map(q => new THREE.Vector2(X(q[0]), Z(q[1])))); const ph = new THREE.Path(); ph.absarc(X(2.5), Z(-102), 3.5, 0, Math.PI * 2, true); ss.holes.push(ph);   // eye stub with the string pinhole
+  const sg = new THREE.ExtrudeGeometry(ss, { depth: 10, bevelEnabled: false }); sg.rotateX(Math.PI / 2); sg.translate(0, 5, 0);
+  mesh(g, sg, COL.truss, info);
+  box(g, [220, 300, 35], [XF - 110, 0, ZT - 17.5], 0xb08a5b, { name: 'Table (not printed)', note: 'Any table with a square edge. The slider fits 5 to 45 mm; 35 mm is drawn.' }, { transparent: true, opacity: 0.55 });
+  const sl = { name: 'Slider clamp', note: 'The rider is printed in place with the hook, 0.4 mm clear of the plate, then slid free. It wraps the plate (a U around its two edges and outer face) and carries a shelf that runs under the table. A printed pin through the rider and one of the five holes in the plate sets the height in 10 mm steps; the printed screw (6 mm pitch) takes up the last 10 mm and the pad spreads the load. Stick rubber on the pad. Fits tables 5 to 45 mm thick. Rider 29 g, screw 13 g, pad 4 g, pin 0.5 g.' };
+  box(g, [4, 38.6, 30], [X(7.3), 0, Z(-30)], COL.pla, sl);                  // rider outer wall
+  for (const sy of [-1, 1]) box(g, [9, 4, 30], [X(4.8), sy * 17.3, Z(-30)], COL.pla, sl);   // rider side walls
+  box(g, [44.7, 38.6, 8], [X(-22.65), 0, Z(-41)], COL.pla, sl);             // shelf under the table
+  cylZ(g, 13, 20, [X(-25), 0, Z(-47)], COL.pla, sl);                        // nut boss
+  cylZ(g, 6, 36, [X(-25), 0, Z(-59)], COL.truss, sl);                       // screw
+  cylZ(g, 16, 9, [X(-25), 0, Z(-81.5)], COL.truss, sl);                     // knob
+  cylZ(g, 14, 6, [X(-25), 0, Z(-38)], COL.truss, sl);                       // flat pad, rubber goes on its top face
+  const pin = mesh(g, new THREE.CylinderGeometry(2.5, 2.5, 12, 24), COL.truss, sl); pin.rotation.z = Math.PI / 2; pin.position.set(X(6), 0, Z(-25));
+  label('Table hook (string through the pinhole)', g, [X(10), 0, Z(-120)], true);
+  label('Slider clamp: pin sets height, screw + pad clamp', g, [X(-25), 0, Z(-95)], true);
 }
 function buildTrim(g, a) {           // steel washer stack on the right wall's inner face
   const len = g / (Math.PI * 64 * RHO_STEEL), grp = sideGroup('right', 'elec');
@@ -588,7 +621,7 @@ function readouts(M, com, clamped, trim) {
 }
 
 // ---------- configuration + build ----------
-const cfg = { walls: new Set(['left', 'right']), batt: true, trim: true, hook: true };
+const cfg = { walls: new Set(['left', 'right']), batt: true, trim: true, hook: true, table: true };
 function build() {
   clear();
   SIDES.forEach(s => { if (!cfg.walls.has(s)) sideState[s].z = LIFT; });   // removed panels slide back in from the top next time
@@ -597,6 +630,7 @@ function build() {
   buildElectronics(); buildMotorWires();
   buildL298();
   if (cfg.hook && cfg.walls.has('right')) buildHook();
+  buildTable();
   let clamped = false, trim = 0;
   if (cfg.batt) {
     const { M, com } = solve();
@@ -669,7 +703,7 @@ function syncUI() {
 ['right', 'back', 'front'].forEach(s => T('w-' + s).addEventListener('change', e => { e.target.checked ? cfg.walls.add(s) : cfg.walls.delete(s); syncUI(); build(); }));
 T('cfg-batt').addEventListener('change', e => { cfg.batt = e.target.checked; build(); });
 T('cfg-trim').addEventListener('change', e => { cfg.trim = e.target.checked; syncUI(); build(); });
-T('cfg-hook').addEventListener('change', e => { cfg.hook = e.target.checked; build(); });T('reset').addEventListener('click', () => { camera.position.copy(HOME.pos); controls.target.copy(HOME.target); controls.update(); });
+T('cfg-hook').addEventListener('change', e => { cfg.hook = e.target.checked; build(); });T('cfg-table').addEventListener('change', e => { cfg.table = e.target.checked; build(); });T('reset').addEventListener('click', () => { camera.position.copy(HOME.pos); controls.target.copy(HOME.target); controls.update(); });
 T('clean').addEventListener('click', e => {      // clean view: hides the part labels, the hover box, the hint and any load warning
   const on = stage.classList.toggle('clean');
   e.currentTarget.textContent = on ? 'Show labels' : 'Hide labels'; e.currentTarget.setAttribute('aria-pressed', String(on));

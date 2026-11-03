@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAT-2 ADCS commissioning</title>
+<meta name="description" content="Animated walk-through of the 18 CubeADCS commissioning steps for CTS SAT-2.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F2236'/%3E%3Crect x='8' y='11' width='16' height='10' fill='%2395B8D6'/%3E%3Ccircle cx='24' cy='8' r='3' fill='%23F4BB45'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <nav id="nav" aria-label="Commissioning steps">
+    <div class="brand">
+      <h1>SAT-2 ADCS<br>commissioning</h1>
+      <p>The 18 steps from the CubeSpace manual (V7.1), played back one at a time.</p>
+    </div>
+    <div id="nav-list"></div>
+    <div class="extra">
+      <p class="phase">Around the steps</p>
+      <ol>
+        <li><a href="#/pass" data-page="pass"><i>+</i><span>Every overpass</span></a></li>
+        <li><a href="#/safe" data-page="safe"><i>+</i><span>Built-in safeguards</span></a></li>
+      </ol>
+    </div>
+  </nav>
+
+  <main id="main">
+    <div id="view-step">
+      <header class="head">
+        <h2><span id="h-n"></span><span id="h-t"></span></h2>
+        <p class="src" id="h-sec"></p>
+        <dl class="spec">
+          <div><dt>Estimation mode</dt><dd id="spec-est"></dd></div>
+          <div><dt>Control mode</dt><dd id="spec-ctl"></dd></div>
+          <div><dt>Duration</dt><dd id="spec-dur"></dd></div>
+          <div><dt>Before you start</dt><dd id="spec-pre"></dd></div>
+        </dl>
+      </header>
+
+      <section class="stage" aria-label="Simulation">
+        <div class="stagewrap">
+          <canvas id="stage" role="img" aria-label="Animated view of the satellite for this step"></canvas>
+          <div class="cap" id="cap" aria-live="off"></div>
+        </div>
+        <div class="transport">
+          <button id="play" type="button" class="icon" aria-label="Play"></button>
+          <button id="restart" type="button" class="icon" aria-label="Restart"><svg viewBox="0 0 20 20"><path d="M4 3h2.5v14H4zM16 3.5v13L7 10z"/></svg></button>
+          <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Scrub through the step">
+          <span id="clock"></span>
+          <div class="seg" id="speed" role="group" aria-label="Speed"><button type="button" data-s="0.5" aria-pressed="false">0.5×</button><button type="button" data-s="1" aria-pressed="true">1×</button><button type="button" data-s="2" aria-pressed="false">2×</button></div>
+        </div>
+        <div id="params" class="params"></div>
+        <p id="note" class="note" hidden></p>
+      </section>
+
+      <p id="story" class="story"></p>
+      <div id="charts" class="charts"></div>
+
+      <div class="detail">
+        <section class="seq">
+          <h3>Command sequence <small>click a row to jump to it</small></h3>
+          <ol id="cmds"></ol>
+        </section>
+        <div class="side">
+          <section>
+            <h3>Telemetry to log</h3>
+            <table class="tlm"><tbody id="tlm"></tbody></table>
+          </section>
+          <section>
+            <h3>It worked if</h3>
+            <ul id="pass" class="pass"></ul>
+          </section>
+          <section>
+            <h3>If it didn't</h3>
+            <div id="trouble"></div>
+          </section>
+          <section id="tool" class="tool" hidden></section>
+        </div>
+      </div>
+
+      <div class="stepnav">
+        <button id="prev" type="button">Previous step</button>
+        <button id="next" type="button">Next step</button>
+      </div>
+    </div>
+
+    <div id="view-pass" hidden>
+      <header class="head"><h2><span>+</span><span>Every overpass</span></h2><p class="src">Manual sections 2 and 16, pages 8–11 and 59</p></header>
+      <div class="plain">
+        <p class="story">Three things at every pass, however far through commissioning you are. Nominal ADCS operation needs very few telecommands (set estimation and control mode, set enabled state), but commissioning adds many more.</p>
+        <div class="cols3">
+          <section><h3>Synchronise time</h3><p>Send a single <i>Set Unix Time</i> command. Position prediction and the magnetic field model both depend on it.</p></section>
+          <section><h3>Check ADCS health</h3><p>Read the error flags in the ADCS State telemetry and the current and temperature frames. Persistent flags need attention, and so do telemetry values that wander far from nominal.</p></section>
+          <section><h3>Check for new TLEs</h3><p>Upload fresh two-line elements whenever new ones are published. Roughly once a day is enough, not every pass.</p></section>
+        </div>
+        <h3 class="sub">Logging so that frames line up</h3>
+        <p>The ADCS can log to two SD files (LOG1 and LOG2) so every channel in a record comes from the same processing iteration. If you sample over the bus from the OBC instead, request frames between iterations: read the <i>ACP Execution State</i> frame and wait until <i>Time Since Iteration Start</i> reaches 500 ms (an iteration never takes longer), then pull everything you need. A frame requested just before an iteration ends can come from the previous one.</p>
+        <p>Error flags come in two kinds. Status flags track the current state every iteration. Latching error flags stay set until you clear them by command, so an error that came and went between two reads still shows up. If it is still set on the next read, it's persistent.</p>
+      </div>
+    </div>
+
+    <div id="view-safe" hidden>
+      <header class="head"><h2><span>+</span><span>Built-in safeguards</span></h2><p class="src">Manual section 17, pages 60–62</p></header>
+      <div class="plain">
+        <p class="story">Several recoveries run automatically, so a failing module doesn't take the satellite with it. Try the first one.</p>
+        <section class="demo">
+          <h3>I²C and unresponsive modules</h3>
+          <div class="demo-row"><div id="led" class="led" data-s="ok" aria-hidden="true"></div><p id="fault-out" aria-live="polite"></p><button id="fault" type="button"></button></div>
+          <p>Every second the ADCS checks the CommsError and run-time flags of CubeControl Signal and Motor, CubeSense, CubeWheel and CubeStar. Three consecutive run-time errors, or more than 10 accumulated communication errors (30 on ACP v3), power-cycle the module. After 5 power cycles it is switched off for good. Ten seconds of clean communication (60 s on ACP v3) resets the error counter, so only persistent faults get handled.</p>
+        </section>
+        <div class="cols2">
+          <section><h3>Estimator divergence</h3><p>If the absolute values of the three estimated rate components add up to more than 1000 deg/s, the estimator goes to none (mode 0). Any controller that needs it goes to none too, except B-dot, which needs no estimator.</p></section>
+          <section><h3>Wheel errors <small>ACP v5 and up</small></h3><p>A wheel that doesn't track its momentum command raises a flag. That wheel's control, and magnetic momentum dumping, are paused, so the torquers can't spin the satellite up chasing an unresponsive wheel. If it recovers, control resumes. After 5 failed power cycles, and with <i>wheelErrorHandling</i> true, control falls back to Y-Thomson (mode 2) to detumble.</p></section>
+          <section><h3>Faulty magnetometer <small>ACP v5 and up</small></h3><p>If any axis stays constant for 10 s a run-time error is raised and the module power-cycles every 10 s. After 3 cycles, with <i>autoRecoverMtm</i> true, the mode steps along: main via Signal (0), redundant via Signal (1), main via Motor (2), none (3). Via Motor there is no temperature compensation and raw readings are 12-bit rather than 16-bit.</p></section>
+          <section><h3>Faulty MEMS rate sensors <small>ACP v5 and up</small></h3><p>With <i>rateSensorErrorHandling</i> true, an axis that stays constant or zero for 30 s moves estimation off the gyros. From MEMS rate sensing with a faulty Y sensor in Y-Thomson: magnetometer rate filter (2) and B-dot (1). From Gyro EKF with any faulty sensor and control above B-dot: Full-state EKF (5) and control none (0). A reading beyond 80 × RateSensorMult deg/s sets the out-of-range flag.</p></section>
+        </div>
+      </div>
+    </div>
+
+    <footer class="foot">Curves and sky views are schematic, shaped from the figures and text of the CubeADCS 3-Axis Commissioning Manual V7.1 (CubeSpace, 2020). They are not flight data. Spin is shown slowed where the true rate would strobe. Check the manual and your configuration sheet before sending real commands.</footer>
+  </main>
+</div>
+<script src="engine.js"></script>
+<script src="scenes.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

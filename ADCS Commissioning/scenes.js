@@ -288,7 +288,7 @@ SCENES.push({
     { title: 'Pitch angle', unit: 'deg', y: [-180, 180], series: [ser('true', cc.y, s => s.pitch), ser('estimated', cc.ink, s => s.pitchEst, { dash: true })] },
     { title: 'Estimated rates', unit: 'deg/s', series: xyz('west') },
   ],
-  overlay(ctx, W, H, s) { pitchDial(ctx, W - 70, 112, 44, s.pitch, s.pitchEst); },
+  overlay(ctx, W, H, s) { pitchDial(ctx, W - 70, 150, 40, s.pitch, s.pitchEst); },
   show: { b: true },
 });
 
@@ -380,7 +380,7 @@ SCENES.push({
     { title: 'Estimated attitude angles', unit: 'deg', y: [-180, 180], series: [ser('roll', cc.x, s => s.eul[0]), ser('pitch', cc.y, s => s.eul[1]), ser('yaw', cc.z, s => s.eul[2])], marks: [{ t: S8.tc, label: 'mode 3' }, { t: S8.ta, label: 'auto mode 4', row: 1 }, { t: S8.te, label: 'EKF', row: 2 }] },
     { title: 'Y wheel speed', unit: 'rpm', series: [ser('wheel Y', cc.violet, s => s.wheel[1])] },
   ],
-  overlay(ctx, W, H, s) { pitchDial(ctx, W - 70, 112, 44, s.eul[1], null); },
+  overlay(ctx, W, H, s) { pitchDial(ctx, W - 70, 150, 40, s.eul[1], null); },
   show: { wheels: [1], nadir: true },
 });
 

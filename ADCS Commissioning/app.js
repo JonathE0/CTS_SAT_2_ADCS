@@ -7,7 +7,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const st = { scene: null, P: {}, sim: null, t: 0, playing: false, speed: 1, wa: [0, 0, 0], activeIdx: -1, cmds: [] };
+const st = { scene: null, P: {}, sim: null, t: 0, playing: false, speed: '1', wa: [0, 0, 0], activeIdx: -1, cmds: [] };
 const stage = $('#stage'), sctx = stage.getContext('2d');
 
 /* ------------------------------------------------------------- simulation */
@@ -26,11 +26,15 @@ function simulate(sc, P) {
     else s.eul = Q.toEuler(q);
     if (s.w && i > 0) for (let j = 0; j < 3; j++) ang[j] += s.w[j] * dt;
     s.q = q; s.qv = qv; s.ang = ang.slice();
+    if (i > 0) { const d = Q.mul(Q.conj(S[i - 1].q), q), sg = d[0] < 0 ? -1 : 1, sh = Math.hypot(d[1], d[2], d[3]), th = 2 * Math.atan2(sh, Math.abs(d[0])) * R2D / dt; s.rate = sh > 1e-12 ? [sg * d[1] / sh * th, sg * d[2] / sh * th, sg * d[3] / sh * th] : [0, 0, 0]; } else s.rate = [0, 0, 0];
+    s.slew = V.len(s.rate);
     if (s.B) s.bBody = Q.rot(Q.conj(q), s.B);
     if (b.derive) b.derive(s, i, s.t, S);
   });
-  return { S, T, N, dt, k, q0: b.q0 };
+  return { S, T, N, dt, k, wmax, q0: b.q0 };
 }
+
+function getRate() { return st.speed === 'fit' ? st.sim.T / st.scene.dur : +st.speed; }
 
 /* -------------------------------------------------------------- stage draw */
 function modeAt(sc, P, t) {
@@ -79,7 +83,10 @@ function drawStage() {
   const ctx = sctx; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const W = r.width, H = r.height, t = st.t;
   ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
-  const idx = clamp(Math.round(t / sim.dt), 0, sim.N - 1), s = sim.S[idx];
+  const idx = clamp(Math.round(t / sim.dt), 0, sim.N - 1);
+  let s = sim.S[idx];
+  const trueSpin = !sc.exag && sim.k < 1 && getRate() * sim.wmax <= 220;
+  if (trueSpin) s = { ...s, qv: s.q };
   if (sc.draw) { drawStars(ctx, W, H); sc.draw(ctx, W, H, s, t, st.P, { samples: sim.S, sim }); }
   else drawDefault(ctx, W, H, s, t, sc, st.P);
   if (sc.overlay) sc.overlay(ctx, W, H, s, t, st.P, { samples: sim.S });
@@ -92,7 +99,13 @@ function drawStage() {
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     lines.forEach((ln, k) => { ctx.fillStyle = k < 2 ? C.text : C.sun; ctx.font = (k < 2 ? '600 ' : '500 ') + '13px "Instrument Sans", system-ui, sans-serif'; ctx.fillText(ln, 16, 24 + k * 19); });
   }
-  if (sim.k < 0.97 && !sc.draw) { ctx.fillStyle = C.dim; ctx.font = '11.5px "Instrument Sans", system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.fillText('spin rate shown schematically', W - 14, 22); }
+  if (sim.k < 0.97 && !sc.draw && !trueSpin) { ctx.fillStyle = C.dim; ctx.font = '11.5px "Instrument Sans", system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.fillText('spin rate shown schematically', W - 14, 22); }
+  if (!sc.draw || sc.id === 17) {
+    const f = v => (Math.abs(v) < 0.1 ? v.toFixed(3) : Math.abs(v) < 10 ? v.toFixed(2) : v.toFixed(1));
+    const rows = [['Slew rate', f(s.slew) + ' °/s'], ['Body rate', 'x ' + f(s.rate[0]) + '  y ' + f(s.rate[1]) + '  z ' + f(s.rate[2])], ['Attitude', 'R ' + f(s.eul[0]) + '  P ' + f(s.eul[1]) + '  Y ' + f(s.eul[2]) + ' °']];
+    ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+    rows.forEach(([k, v], i) => { const y = 44 + i * 18; ctx.font = '600 12.5px "Instrument Sans", system-ui, sans-serif'; ctx.fillStyle = i ? C.text : '#F4BB45'; const wv = ctx.measureText(v).width; ctx.fillText(v, W - 14, y); ctx.fillStyle = C.dim; ctx.font = '11.5px "Instrument Sans", system-ui, sans-serif'; ctx.fillText(k, W - 14 - wv - 8, y); });
+  }
   /* current command caption */
   const cmds = st.cmds; let ai = -1; cmds.forEach((c, i) => { if (t >= c.t) ai = i; });
   if (ai !== st.activeIdx) { st.activeIdx = ai; document.querySelectorAll('.cmd').forEach((n, i) => { n.classList.toggle('done', i < ai); n.classList.toggle('now', i === ai); }); const n = document.querySelectorAll('.cmd')[ai]; if (n) { const box = n.parentElement; if (box.scrollHeight > box.clientHeight) box.scrollTop = n.offsetTop - box.offsetTop - 40; } }
@@ -107,7 +120,7 @@ let lastTs = 0;
 function frame(ts) {
   const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0); lastTs = ts;
   if (st.playing && st.sim) {
-    st.t += dt * (st.sim.T / st.scene.dur) * st.speed;
+    st.t += dt * getRate();
     if (st.t >= st.sim.T) { st.t = st.sim.T; setPlaying(false); }
     const sc = st.scene, idx = clamp(Math.round(st.t / st.sim.dt), 0, st.sim.N - 1), s = st.sim.S[idx];
     if (sc.show && sc.show.wheels && s.wheel) sc.show.wheels.forEach(a => { st.wa[a] += clamp(s.wheel[a] * 0.12, -700, 700) * dt; });
@@ -274,7 +287,7 @@ window.addEventListener('hashchange', route);
 $('#play').onclick = () => { if (st.t >= st.sim.T) st.t = 0; setPlaying(!st.playing); };
 $('#restart').onclick = () => { st.t = 0; st.wa = [0, 0, 0]; setPlaying(true); };
 $('#scrub').oninput = e => { st.t = e.target.value / 1000 * st.sim.T; setPlaying(false); };
-document.querySelectorAll('#speed button').forEach(b => { b.onclick = () => { st.speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.setAttribute('aria-pressed', x === b)); }; });
+document.querySelectorAll('#speed button').forEach(b => { b.onclick = () => { st.speed = b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.setAttribute('aria-pressed', x === b)); }; });
 document.querySelectorAll('.stepnav button').forEach(b => { b.onclick = () => { location.hash = '#/' + b.dataset.go; }; });
 document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && e.target.type !== 'range') return;

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -55,6 +55,7 @@
           <span id="clock"></span>
           <div class="seg" id="speed" role="group" aria-label="Playback speed"><button type="button" data-s="1" aria-pressed="true">Real time</button><button type="button" data-s="10" aria-pressed="false">10×</button><button type="button" data-s="60" aria-pressed="false">60×</button><button type="button" data-s="fit" aria-pressed="false">Fit step</button></div>
         </div>
+        <p class="hint">Drag the view to look around, scroll or pinch to zoom, double-click to reset.</p>
         <div id="params" class="params"></div>
         <p id="note" class="note" hidden></p>
       </section>
@@ -126,8 +127,8 @@
     <footer class="foot">Curves and sky views are schematic, shaped from the figures and text of the CubeADCS 3-Axis Commissioning Manual V7.1 (CubeSpace, 2020). They are not flight data. Spin is shown slowed where the true rate would strobe. Check the manual and your configuration sheet before sending real commands.</footer>
   </main>
 </div>
-<script src="engine.js"></script>
-<script src="scenes.js"></script>
-<script src="app.js"></script>
+<script src="engine.js?v=3"></script>
+<script src="scenes.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

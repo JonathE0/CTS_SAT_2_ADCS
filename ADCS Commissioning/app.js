@@ -140,6 +140,7 @@ function params(sc) { const o = {}; (sc.params || []).forEach(p => { o[p.id] = p
 const val = (x, P) => (typeof x === 'function' ? x(P) : x);
 
 function loadScene(id, keepParams) {
+  VIEW.az = 0; VIEW.el = 0; VIEW.zoom = 1;
   const sc = SCENES.find(s => s.id === id); st.scene = sc;
   if (!keepParams) st.P = params(sc);
   st.sim = simulate(sc, st.P); st.t = 0; st.wa = [0, 0, 0]; st.activeIdx = -2;
@@ -284,6 +285,21 @@ function route() {
 }
 buildNav();
 window.addEventListener('hashchange', route);
+/* orbit view */
+{
+  const pts = new Map(); let pinch = 0;
+  stage.style.touchAction = 'none'; stage.style.cursor = 'grab';
+  stage.addEventListener('pointerdown', e => { stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); stage.style.cursor = 'grabbing'; pinch = 0; });
+  stage.addEventListener('pointermove', e => {
+    const p = pts.get(e.pointerId); if (!p) return;
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; const d0 = Math.hypot(a[0] - b[0], a[1] - b[1]); pts.set(e.pointerId, [e.clientX, e.clientY]); const [c, d] = [...pts.values()]; const d1 = Math.hypot(c[0] - d[0], c[1] - d[1]); if (d0) VIEW.zoom = clamp(VIEW.zoom * d1 / d0, 0.4, 3.5); return; }
+    VIEW.az += (e.clientX - p[0]) * 0.5; VIEW.el = clamp(VIEW.el + (e.clientY - p[1]) * 0.4, -70, 70); pts.set(e.pointerId, [e.clientX, e.clientY]);
+  });
+  const up = e => { pts.delete(e.pointerId); stage.style.cursor = 'grab'; };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  stage.addEventListener('wheel', e => { e.preventDefault(); VIEW.zoom = clamp(VIEW.zoom * Math.exp(-e.deltaY * 0.0015), 0.4, 3.5); }, { passive: false });
+  stage.addEventListener('dblclick', () => { VIEW.az = 0; VIEW.el = 0; VIEW.zoom = 1; });
+}
 $('#play').onclick = () => { if (st.t >= st.sim.T) st.t = 0; setPlaying(!st.playing); };
 $('#restart').onclick = () => { st.t = 0; st.wa = [0, 0, 0]; setPlaying(true); };
 $('#scrub').oninput = e => { st.t = e.target.value / 1000 * st.sim.T; setPlaying(false); };

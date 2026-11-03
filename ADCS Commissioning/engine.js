@@ -78,7 +78,10 @@ const AX = [C.x, C.y, C.z];
 const chartColors = { x: '#2F78BF', y: '#DB5A36', z: '#2F9A6D', ink: '#0F2236', amber: '#C98A0B', teal: '#1B93A6', violet: '#7B5CC4', grey: '#6C8196' };
 
 /* ------------------------------------------------------------------ camera */
+/* user-controlled orbit view: drag to rotate, wheel/pinch to zoom, double-click to reset */
+const VIEW = { az: 0, el: 0, zoom: 1 };
 function makeCam(cx, cy, scale, az, el) {
+  az += VIEW.az; el = clamp(el + VIEW.el, -88, 88); scale *= VIEW.zoom;
   const ca = Math.cos(az * D2R), sa = Math.sin(az * D2R), ce = Math.cos(el * D2R), se = Math.sin(el * D2R);
   const f = v => { const x1 = v[0] * ca - v[1] * sa, y1 = v[0] * sa + v[1] * ca; return [x1, v[2] * ce - y1 * se, y1 * ce + v[2] * se]; };
   return {

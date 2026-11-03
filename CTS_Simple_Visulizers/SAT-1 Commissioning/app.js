@@ -214,7 +214,7 @@ function showStep(id, keep) {
   st.P = params(sc);
   renderControls(sc); renderTool(sc);
   loadScene(id, true);
-  document.title = `Step ${sc.id}: ${sc.title} | SAT-2 ADCS commissioning`;
+  document.title = `Step ${sc.id}: ${sc.title} | SAT-1 ADCS commissioning`;
   $('#prev').disabled = id === 1; $('#next').disabled = id === SCENES.length;
   $('#prev').dataset.go = id - 1; $('#next').dataset.go = id + 1;
 }
@@ -257,7 +257,7 @@ function showPage(name) {
   $('#view-step').hidden = true; $('#view-pass').hidden = name !== 'pass'; $('#view-safe').hidden = name !== 'safe';
   setPlaying(false);
   document.querySelectorAll('#nav a').forEach(a => a.setAttribute('aria-current', a.dataset.page === name ? 'page' : 'false'));
-  document.title = (name === 'pass' ? 'Every overpass' : 'Built-in safeguards') + ' | SAT-2 ADCS commissioning';
+  document.title = (name === 'pass' ? 'Every overpass' : 'Built-in safeguards') + ' | SAT-1 ADCS commissioning';
 }
 function initSafeguard() {
   const btn = $('#fault'), out = $('#fault-out'), led = $('#led'); let n = 0;

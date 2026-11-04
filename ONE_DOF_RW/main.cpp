@@ -1,3 +1,4 @@
+// Legacy standalone example. Current PlatformIO firmware: firmware/src/main.cpp.
 #include <Arduino.h>
 #include <Adafruit_MPU6050.h>
 #include <Wire.h>

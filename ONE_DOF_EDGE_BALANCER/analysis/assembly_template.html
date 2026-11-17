@@ -1,0 +1,447 @@
+<title>Edge Cube Assembly</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an assembly bench. A large 3D view with transport controls under it on the left; the current step, the step list and the parts on the right.
+   Tokens follow the other CTS visualizers (Barlow, IBM Plex Mono, teal accent) so the set reads as one family. */
+:root {
+  --bg: #eceff0; --panel: #f8f9fa; --ink: #182126; --muted: #55646c; --line: #d2d9dc;
+  --accent: #0e7c86; --accent-ink: #ffffff; --good: #1f7a4d; --warn: #9a6200;
+  --view: #dde4e7; --grid-a: #b3bfc5; --grid-b: #cdd6da; --edge: #1b2a31; --soft: #e6ebed;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --font-body: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1518; --panel: #172025; --ink: #e4ebee; --muted: #93a4ac; --line: #2a373e;
+    --accent: #4cc3cf; --accent-ink: #06191c; --good: #5cc78e; --warn: #e0a23a;
+    --view: #0c1215; --grid-a: #2c3d47; --grid-b: #1b2830; --edge: #d8e4ea; --soft: #1e2a30;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1518; --panel: #172025; --ink: #e4ebee; --muted: #93a4ac; --line: #2a373e;
+  --accent: #4cc3cf; --accent-ink: #06191c; --good: #5cc78e; --warn: #e0a23a;
+  --view: #0c1215; --grid-a: #2c3d47; --grid-b: #1b2830; --edge: #d8e4ea; --soft: #1e2a30;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.page { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: 0.01em; }
+h1 { font-size: 2.3rem; line-height: 1.05; }
+h2 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+h3 { font-size: 1.5rem; line-height: 1.15; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 70ch; margin-top: 6px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: 16px; align-items: start; }
+.left, .right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
+.viewbox { position: relative; padding: 0; overflow: hidden; background: var(--view); }
+#view { display: block; width: 100%; height: 560px; touch-action: none; cursor: grab; }
+#view:active { cursor: grabbing; }
+.chips { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; max-width: calc(100% - 20px); }
+.chip { font-family: var(--font-mono); font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: var(--ink); }
+.hint { position: absolute; right: 10px; bottom: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+.nogl[hidden] { display: none; }
+.transport { display: flex; flex-direction: column; gap: 12px; }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button { font: inherit; font-size: 14px; font-weight: 500; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--soft); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); min-width: 84px; }
+button:hover:not(:disabled) { filter: brightness(1.06); }
+button:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.spacer { flex: 1 1 auto; }
+.scrub input { width: 100%; accent-color: var(--accent); margin: 0; }
+.ticks { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+.opts { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); }
+.opts label { display: flex; gap: 6px; align-items: center; font-size: 14px; }
+.opts input { accent-color: var(--accent); }
+.opts .group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.opts .group > span { font-size: 13px; color: var(--muted); }
+.step .no { font-family: var(--font-mono); font-size: 12px; color: var(--accent); letter-spacing: 0.04em; }
+.step h3 { margin-top: 2px; }
+.step .text { margin-top: 8px; max-width: 62ch; }
+.step .fact { margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: var(--soft); border-left: 3px solid var(--accent); font-size: 13.5px; color: var(--muted); }
+ol.steplist { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+ol.steplist button { width: 100%; text-align: left; display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: baseline; background: transparent; border-color: transparent; padding: 6px 8px; }
+ol.steplist button .n { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+ol.steplist button[aria-current="step"] { background: var(--soft); border-color: var(--line); }
+ol.steplist button[aria-current="step"] .n { color: var(--accent); }
+ol.steplist button.done { color: var(--muted); }
+ul.parts { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+ul.parts li { display: grid; grid-template-columns: auto 14px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+ul.parts li:last-child { border-bottom: 0; }
+ul.parts input { accent-color: var(--accent); margin: 0; }
+.sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); display: block; }
+.pname small { display: block; font-size: 12px; color: var(--muted); line-height: 1.3; }
+.pmass { font-family: var(--font-mono); font-size: 12.5px; text-align: right; }
+.foot { color: var(--muted); font-size: 13px; max-width: 90ch; }
+.mono { font-family: var(--font-mono); font-size: 0.92em; }
+@media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } #view { height: 380px; } h1 { font-size: 1.9rem; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<main class="page">
+  <header>
+    <h1>Edge Cube Assembly</h1>
+    <p class="lede">The balancing wheel module, built from the CAD that made the STL files: three printed parts, the 2804 motor, the encoder board, the IMU and eight weight bolts. Step through the build, or drag the bar to scrub it.</p>
+  </header>
+
+  <section class="grid">
+    <div class="left">
+      <div class="card viewbox">
+        <canvas id="view" role="img" aria-label="Interactive 3D view of the balancing wheel module being assembled"></canvas>
+        <div class="chips">
+          <span class="chip" id="chipStep">Step 0 of 5</span>
+          <span class="chip" id="chipName">The kit</span>
+        </div>
+        <span class="hint">drag to orbit, scroll to zoom</span>
+        <div class="nogl" id="nogl" hidden>This view needs WebGL, which this browser has turned off. The steps and the parts list still work.</div>
+      </div>
+
+      <div class="card transport">
+        <div class="buttons">
+          <button id="bPrev" type="button">Back</button>
+          <button id="bPlay" type="button" class="primary">Play</button>
+          <button id="bNext" type="button">Next</button>
+          <span class="spacer"></span>
+          <button id="bKit" type="button">Kit</button>
+          <button id="bDone" type="button">Standing</button>
+        </div>
+        <div class="scrub">
+          <input id="scrub" type="range" min="0" max="5" step="0.01" value="0" aria-label="Assembly progress, from the kit to the module standing on its edge">
+          <div class="ticks"><span>the kit</span><span>standing on its edge</span></div>
+        </div>
+        <div class="opts">
+          <div class="group" role="group" aria-label="Camera"><span>View</span>
+            <button id="vIso" type="button">Three-quarter</button>
+            <button id="vSide" type="button">Side</button>
+            <button id="vEnd" type="button">End</button>
+          </div>
+          <label><input id="oCut" type="checkbox"> Section cut</label>
+          <label><input id="oEdge" type="checkbox" checked> Outlines</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <section class="card step" aria-live="polite">
+        <div class="no" id="stepNo">STEP 0 OF 5</div>
+        <h3 id="stepTitle">The kit</h3>
+        <p class="text" id="stepText"></p>
+        <p class="fact" id="stepFact"></p>
+      </section>
+
+      <section class="card">
+        <h2>Steps</h2>
+        <ol class="steplist" id="steps"></ol>
+      </section>
+
+      <section class="card">
+        <h2>Parts</h2>
+        <ul class="parts" id="parts"></ul>
+        <p class="foot" style="margin-top:8px">Total about 133 g, which includes 3 g for the cable's drag. Untick a part to look at what is behind it.</p>
+      </section>
+    </div>
+  </section>
+
+  <p class="foot">The geometry is the exported CAD; the kit's board, connectors and standoffs are envelopes. Their sizes come from the listing's drawings, except the standoff lengths (7 mm), which are scaled off its photos and not measured: the unit may be up to 2.9 mm longer than drawn before anything leaves the 44 mm depth. The alignment pin is not drawn. Nothing is printed yet, and the glued frame joint is untested.</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script id="cad" type="application/json">/*CAD_JSON*/</script>
+<script>
+(function () {
+  'use strict';
+
+  // ------------------------------------------------------------------ content
+  var N = 5;                                                         // steps after the kit
+  var STEPS = [
+    { t: 'The kit', short: 'The kit',
+      text: 'Three printed parts, the IMU, and the 2804 motor with its AS5600 encoder board as the kit comes: the board on two brass standoffs off the motor\'s back face, four more brass standoffs on its back as feet. Plus eight M4 weight bolts and eight M2.5 screws, laid out along the wheel axis. Step through the build with Next, or drag the bar.',
+      fact: 'Finished size is 90 x 90 x 44 mm, about 133 g with the trim pads empty.' },
+    { t: 'Cap onto the base', short: 'Frame together',
+      text: 'Put epoxy in the cap\'s four sockets and push it onto the base\'s four tenons until the collars meet the stubs. The frame is now one piece, and the motor mount is already part of the base, so nothing else is glued.',
+      fact: 'The sockets are 0.05 mm per side looser than the tenons, the fit you measured. The wheel goes in later through the cap ring: the opening is 80 mm and the wheel is 74.' },
+    { t: 'IMU onto the corner pad', short: 'IMU on the pad',
+      text: 'Tie the IMU to the pivot-corner pad with a zip tie through its two slots. Do it before the motor unit goes in: afterwards the wheel blocks the way to the pad.',
+      fact: 'The board is centred on the vertical diagonal and turned 45 degrees from the frame, so at balance its edges are vertical and horizontal and its horizontal axis reads about 0 g. To reach it later, take the motor unit out: four screws.' },
+    { t: 'Wheel onto the rotor', short: 'Wheel on',
+      text: 'Leave the motor and encoder as the kit comes. Put the cup over the rotor end, the end without the wires, so its inner wall slides over the spinning can. Four M2.5 x 5 button-head screws go through the floor into the 16 mm hole circle. Then drive the eight M4 x 12 weight bolts into the rim from its back end until their heads are under the surface.',
+      fact: 'The screws engage 2.5 mm, under the drawing\'s 3 mm limit. The rim lies alongside the motor only and ends 1.2 mm before the motor\'s back face, where the three leads come out, so nothing that spins is near a wire.' },
+    { t: 'Motor unit onto its pads', short: 'Unit in, four screws',
+      text: 'Plug the encoder cable into the connector first. Lower the unit through the cap ring until the four brass feet stand on the four raised pads, with that connector towards the pivot corner. Four M2.5 x 8 screws go in from the outside face into the feet. Then lead the cable and the motor\'s leads back to the nearest arm and tie them to it.',
+      fact: 'Checked in CAD: 72 mm of travel with zero overlap, and a driver reaches all four heads. The grey strips are the cable and the leads drawn straight out, the worst case: the wheel still clears them. If a foot does not line up with its slot, loosen its nut and slide it.' },
+    { t: 'Stand it on its edge', short: 'Stand it up',
+      text: 'The 44 mm edge in teal is the pivot. The wheel axis is parallel to it, so the wheel\'s torque tips the cube about that edge. The IMU sits at the pivot corner, where it feels the least sway, and all the wires leave there.',
+      fact: 'Centre of mass 61.5 mm above the edge. Along the edge the module is stable by itself up to about 20 degrees of lean. Across it, the wheel has to do the balancing.' }
+  ];
+
+  // dx along the wheel axis (mm) for each part at the kit (0) and after each step (1..5); 0 means seated. The base never moves.
+  var KEY = {
+    base:   [0, 0, 0, 0, 0, 0],
+    cap:    [-205, 0, 0, 0, 0, 0],
+    imu:    [-62, -62, 0, 0, 0, 0],
+    motor:  [-98, -98, -98, -98, 0, 0],
+    board:  [-98, -98, -98, -98, 0, 0],
+    hw:     [-98, -98, -98, -98, 0, 0],
+    wires:  [-98, -98, -98, -98, 0, 0],
+    wheel:  [-146, -146, -146, -98, 0, 0],
+    bolts:  [-146, -146, -146, -98, 0, 0],
+    screws: [26, 26, 26, 26, 0, 0]
+  };
+  var PARTS = [
+    { id: 'base',   name: 'Frame base',        kind: 'Printed', mass: '26.9 g', color: '#6f8ca3', note: 'end ring, stubs, motor mount with four pads, IMU pad' },
+    { id: 'cap',    name: 'Frame cap',         kind: 'Printed', mass: '10.7 g', color: '#9fb6c7', note: 'end ring with four socket collars' },
+    { id: 'wheel',  name: 'Wheel cup, D74',    kind: 'Printed', mass: '22.4 g', color: '#d9702f', note: 'floor, inner wall over the can, rim beside the motor' },
+    { id: 'bolts',  name: 'Bolts and screws',  kind: 'Bought',  mass: '17.8 g', color: '#8d9aa3', note: 'M4 x 12 weight bolts x 8, M2.5 x 5 x 4' },
+    { id: 'motor',  name: '2804 motor',        kind: 'Bought',  mass: '40 g',   color: '#a8322d', note: 'hollow shaft, with leads' },
+    { id: 'board',  name: 'AS5600 board',      kind: 'Bought',  mass: '3 g',    color: '#1f5fa8', note: 'encoder, two side-entry connectors on the back' },
+    { id: 'hw',     name: 'Kit brass',         kind: 'Bought',  mass: '5 g',    color: '#c9a227', note: 'six standoffs, four nuts, two screws' },
+    { id: 'screws', name: 'Mount screws',      kind: 'Bought',  mass: '1.4 g',  color: '#8d9aa3', note: 'M2.5 x 8 x 4, in from the outside face' },
+    { id: 'imu',    name: 'IMU board',         kind: 'Bought',  mass: '3 g',    color: '#2b2f36', note: 'on the pivot-corner pad, square to gravity' },
+    { id: 'wires',  name: 'Cable and leads',   kind: 'Space',   mass: '-',      color: '#7d868c', note: 'the plug\'s cable and the motor leads, drawn straight out' }
+  ];
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ------------------------------------------------------------------ interface that does not need WebGL
+  var T = 0, Ttarget = 0, playing = false, pauseUntil = 0, scrubbing = false;
+  var ui = { chipStep: $('chipStep'), chipName: $('chipName'), stepNo: $('stepNo'), stepTitle: $('stepTitle'), stepText: $('stepText'), stepFact: $('stepFact'),
+             scrub: $('scrub'), bPlay: $('bPlay'), bPrev: $('bPrev'), bNext: $('bNext'), steps: $('steps'), parts: $('parts') };
+
+  var stepBtns = STEPS.map(function (s, i) {
+    var li = document.createElement('li'), b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = '<span class="n">' + i + '</span><span>' + s.short + '</span>';
+    b.addEventListener('click', function () { playing = false; go(i); });
+    li.appendChild(b); ui.steps.appendChild(li);
+    return b;
+  });
+  var partChecks = {};
+  PARTS.forEach(function (p) {
+    var li = document.createElement('li');
+    li.innerHTML = '<input type="checkbox" checked id="show-' + p.id + '" aria-label="Show ' + p.name + '"><span class="sw" style="background:' + p.color + '"></span>' +
+                   '<label class="pname" for="show-' + p.id + '">' + p.name + '<small>' + p.kind + ', ' + p.note + '</small></label><span class="pmass">' + p.mass + '</span>';
+    ui.parts.appendChild(li);
+    partChecks[p.id] = li.querySelector('input');
+  });
+
+  function shownStep() { var f = T - Math.floor(T); return f > 1e-6 ? Math.ceil(T) : Math.round(T); }
+  function updateUI() {
+    var s = Math.min(N, shownStep()), d = STEPS[s];
+    ui.chipStep.textContent = 'Step ' + s + ' of ' + N;
+    ui.chipName.textContent = d.t;
+    ui.stepNo.textContent = 'STEP ' + s + ' OF ' + N;
+    ui.stepTitle.textContent = d.t;
+    ui.stepText.textContent = d.text;
+    ui.stepFact.textContent = d.fact;
+    stepBtns.forEach(function (b, i) {
+      if (i === s) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+      b.classList.toggle('done', i < s);
+    });
+    if (!scrubbing) ui.scrub.value = T;
+    ui.bPlay.textContent = playing ? 'Pause' : (T >= N - 1e-6 ? 'Replay' : 'Play');
+    ui.bPrev.disabled = T <= 1e-6;
+    ui.bNext.disabled = Ttarget >= N - 1e-6 && T >= N - 1e-6;
+  }
+  function go(n) { Ttarget = Math.max(0, Math.min(N, n)); if (reduce) T = Ttarget; dirty = true; updateUI(); }
+  var dirty = true;
+
+  $('bPrev').addEventListener('click', function () { playing = false; go(Math.ceil(Ttarget - 1e-6) - 1); });
+  $('bNext').addEventListener('click', function () { playing = false; go(Math.floor(Ttarget + 1e-6) + 1); });
+  $('bKit').addEventListener('click', function () { playing = false; go(0); });
+  $('bDone').addEventListener('click', function () { playing = false; go(N); });
+  $('bPlay').addEventListener('click', function () {
+    if (playing) { playing = false; Ttarget = T; updateUI(); return; }
+    if (T >= N - 1e-6) { T = 0; Ttarget = 0; }
+    playing = true; Ttarget = Math.min(N, Math.floor(T + 1e-6) + 1); pauseUntil = 0; updateUI();
+  });
+  ui.scrub.addEventListener('input', function () { playing = false; scrubbing = true; T = Ttarget = parseFloat(ui.scrub.value); dirty = true; updateUI(); });
+  ui.scrub.addEventListener('change', function () { scrubbing = false; });
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /INPUT|BUTTON/.test(e.target.tagName) && e.target.type !== 'checkbox' && e.target.type !== 'range') return;
+    if (e.key === 'ArrowRight') { playing = false; go(Math.floor(Ttarget + 1e-6) + 1); }
+    else if (e.key === 'ArrowLeft') { playing = false; go(Math.ceil(Ttarget - 1e-6) - 1); }
+  });
+
+  // ------------------------------------------------------------------ 3D scene
+  var canvas = $('view'), renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  } catch (err) { renderer = null; }
+  if (!renderer || !window.THREE) { $('nogl').hidden = false; updateUI(); return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.localClippingEnabled = true;
+
+  var scene = new THREE.Scene();
+  var cam = new THREE.PerspectiveCamera(32, 1, 1, 3000);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a98a4, 0.75));
+  var key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(90, 220, 160); scene.add(key);
+  var fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(-160, 80, -120); scene.add(fill);
+
+  var cad = JSON.parse($('cad').textContent);
+  function decode(b64) {
+    var bin = atob(b64), u = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return new Float32Array(u.buffer);
+  }
+
+  var mod = new THREE.Group(); scene.add(mod);                      // module frame: x = wheel axis, (y, z) = the 90 x 90 cross-section
+  var ACCENT = new THREE.Color(0x0e7c86);
+  var meshes = {}, mats = [], edgeObjs = [], ext = {};
+  var clip = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);       // keeps z <= 0 when the section cut is on
+  PARTS.forEach(function (p) {
+    var data = cad.parts[p.id];
+    if (!data) return;
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(decode(data.positions_b64), 3));
+    g.computeVertexNormals(); g.computeBoundingBox();
+    ext[p.id] = [g.boundingBox.min.x, g.boundingBox.max.x];
+    var metal = (p.id === 'bolts' || p.id === 'motor' || p.id === 'hw' || p.id === 'screws') ? 0.45 : 0.04;
+    var m = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.color), roughness: 0.6, metalness: metal, emissive: new THREE.Color(0x000000), emissiveIntensity: 0.3 });
+    var mesh = new THREE.Mesh(g, m);
+    var em = new THREE.LineSegments(new THREE.EdgesGeometry(g, 38), new THREE.LineBasicMaterial({ color: 0x1b2a31, transparent: true, opacity: 0.4 }));
+    mesh.add(em);
+    mod.add(mesh);
+    meshes[p.id] = mesh; mats.push(m); edgeObjs.push(em);
+    partChecks[p.id].addEventListener('change', function () { mesh.visible = partChecks[p.id].checked; dirty = true; });
+  });
+
+  var pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 44, 14).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x0e7c86 }));
+  pivot.position.set(0, -45, 45); pivot.visible = false; mod.add(pivot);   // the pivot edge, at (y, z) = (-45, +45)
+
+  var grid = null;
+  function applyTheme() {
+    var cs = getComputedStyle(document.documentElement);
+    scene.background = new THREE.Color(cs.getPropertyValue('--view').trim());
+    if (grid) { scene.remove(grid); grid.geometry.dispose(); grid.material.dispose(); }
+    grid = new THREE.GridHelper(900, 90, new THREE.Color(cs.getPropertyValue('--grid-a').trim()), new THREE.Color(cs.getPropertyValue('--grid-b').trim()));
+    scene.add(grid);
+    var ec = new THREE.Color(cs.getPropertyValue('--edge').trim());
+    edgeObjs.forEach(function (e) { e.material.color.copy(ec); });
+    ACCENT = new THREE.Color(cs.getPropertyValue('--accent').trim());
+    pivot.material.color.copy(ACCENT);
+    dirty = true;
+  }
+  applyTheme();
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // view options
+  $('oEdge').addEventListener('change', function () { edgeObjs.forEach(function (e) { e.visible = $('oEdge').checked; }); dirty = true; });
+  $('oCut').addEventListener('change', function () {
+    var on = $('oCut').checked;
+    mats.forEach(function (m) { m.clippingPlanes = on ? [clip] : []; m.side = on ? THREE.DoubleSide : THREE.FrontSide; m.needsUpdate = true; });
+    edgeObjs.forEach(function (e) { e.material.clippingPlanes = on ? [clip] : []; e.material.needsUpdate = true; });
+    dirty = true;
+  });
+
+  // ------------------------------------------------------------------ camera
+  var az = -0.5, el = 0.32, zoom = 1, dist = 400, tgt = new THREE.Vector3(-30, 45, 0), tgtGoal = tgt.clone();
+  function setView(a, e) { az = a; el = e; dirty = true; }
+  $('vIso').addEventListener('click', function () { setView(-0.5, 0.32); });
+  $('vSide').addEventListener('click', function () { setView(0, 0.04); });
+  $('vEnd').addEventListener('click', function () { setView(-Math.PI / 2, 0.02); });
+
+  var ptrs = new Map(), pinch = 0;
+  canvas.addEventListener('pointerdown', function (e) { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); pinch = 0; });
+  canvas.addEventListener('pointermove', function (e) {
+    var p = ptrs.get(e.pointerId); if (!p) return;
+    if (ptrs.size === 1) {
+      az -= (e.clientX - p.x) * 0.008; el += (e.clientY - p.y) * 0.008;
+      el = Math.max(-1.3, Math.min(1.45, el));
+    } else if (ptrs.size === 2) {
+      var other = null; ptrs.forEach(function (v, k) { if (k !== e.pointerId) other = v; });
+      var d = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+      if (pinch > 0) zoom = Math.max(0.35, Math.min(2.5, zoom * pinch / d));
+      pinch = d;
+    }
+    p.x = e.clientX; p.y = e.clientY; dirty = true;
+  });
+  function lift(e) { ptrs.delete(e.pointerId); pinch = 0; }
+  canvas.addEventListener('pointerup', lift); canvas.addEventListener('pointercancel', lift);
+  canvas.addEventListener('wheel', function (e) {
+    e.preventDefault(); zoom = Math.max(0.35, Math.min(2.5, zoom * Math.exp(e.deltaY * 0.0012))); dirty = true;
+  }, { passive: false });
+
+  function resize() {
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w < 2 || h < 2) return;
+    renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); dirty = true;
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize', resize);
+  resize();
+
+  // ------------------------------------------------------------------ animation
+  function smooth(f) { return f * f * (3 - 2 * f); }
+  function dxAt(id, t) {
+    var k = KEY[id], i = Math.min(N - 1, Math.floor(t)), f = Math.min(1, t - i);
+    return k[i] + (k[i + 1] - k[i]) * smooth(f);
+  }
+  var phi = 0;
+  function pose() {
+    phi = (Math.PI / 4) * smooth(Math.max(0, Math.min(1, T - (N - 1))));
+    mod.rotation.x = phi;
+    mod.position.y = 45 * (Math.cos(phi) + Math.sin(phi));         // rests on the table: a face at 0 degrees, the pivot edge at 45
+    var s = shownStep();
+    PARTS.forEach(function (p) {
+      var m = meshes[p.id]; if (!m) return;
+      m.position.x = dxAt(p.id, T);
+      var k = KEY[p.id], moving = s >= 1 && s <= N && k[s] !== k[s - 1];
+      m.material.emissive.copy(moving ? ACCENT : new THREE.Color(0x000000));
+    });
+    pivot.visible = T > N - 0.85;
+  }
+  function frameGoal() {
+    var x0 = 1e9, x1 = -1e9;
+    PARTS.forEach(function (p) {
+      var m = meshes[p.id]; if (!m || !m.visible) return;
+      x0 = Math.min(x0, ext[p.id][0] + m.position.x); x1 = Math.max(x1, ext[p.id][1] + m.position.x);
+    });
+    if (x0 > x1) { x0 = -22; x1 = 22; }
+    var span = Math.max(44, x1 - x0), tanH = Math.tan(cam.fov * Math.PI / 360), hgt = 92 + 38 * (phi / (Math.PI / 4));
+    var horiz = Math.abs(Math.cos(az)) * span + Math.abs(Math.sin(az)) * hgt;
+    var d = Math.max((horiz * 0.5 * 1.22) / (tanH * cam.aspect), (hgt * 0.5 * 1.4) / tanH);
+    tgtGoal.set((x0 + x1) / 2, mod.position.y, 0);
+    return d * zoom;
+  }
+
+  var last = performance.now();
+  function tick(now) {
+    requestAnimationFrame(tick);
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (T !== Ttarget) {
+      var d = Ttarget - T, stp = reduce ? Math.abs(d) : Math.min(Math.abs(d), 0.8 * dt);
+      T += Math.sign(d) * stp; if (Math.abs(Ttarget - T) < 1e-6) { T = Ttarget; pauseUntil = now + 800; }
+      dirty = true; updateUI();
+    } else if (playing && now >= pauseUntil) {
+      if (Ttarget >= N - 1e-6) { playing = false; updateUI(); }
+      else {
+        Ttarget = Math.floor(Ttarget + 1e-6) + 1;
+        if (reduce) { T = Ttarget; pauseUntil = now + 1400; dirty = true; updateUI(); }      // no tween: jump a step at a time
+      }
+    }
+    pose();
+    var goal = frameGoal(), moved = false;
+    if (Math.abs(goal - dist) > 0.05) { dist += (goal - dist) * 0.18; moved = true; } else { dist = goal; }
+    if (tgt.distanceTo(tgtGoal) > 0.02) { tgt.lerp(tgtGoal, 0.18); moved = true; } else { tgt.copy(tgtGoal); }
+    if (!dirty && !moved) return;
+    dirty = false;
+    cam.position.set(tgt.x + dist * Math.cos(el) * Math.sin(az), tgt.y + dist * Math.sin(el), tgt.z + dist * Math.cos(el) * Math.cos(az));
+    cam.lookAt(tgt);
+    renderer.render(scene, cam);
+  }
+  updateUI();
+  requestAnimationFrame(tick);
+})();
+</script>

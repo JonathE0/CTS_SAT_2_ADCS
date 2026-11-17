@@ -1,6 +1,6 @@
 """Edge-balancing cube, 90 mm, one 2804 hollow-shaft gimbal motor (Amazon.ca B0FSZ7XWG2) and a D74 reaction wheel inside.
 
-    python make_cube_parts.py        # needs numpy + manifold3d (the toolchain of ONE_DOF_RW/rev3 and SWINGUP_RWP)
+    python make_cube_parts.py        # needs numpy + manifold3d (the toolchain of ONE_DOF_RW/String_Rev3 and SWINGUP_RWP)
 
 Frame: cube-local axes, centre at the origin, x = the wheel axis = the pivot edge direction. The cube stands on the edge at (y, z) = (-45, +45), so the
 vertical diagonal of the (y, z) square is the up direction. Twelve 5 x 5 bars, every outer edge rounded R1.5 so it rolls on any edge. Printed in two halves
@@ -27,7 +27,7 @@ import numpy as np
 import manifold3d as m3
 
 HERE = Path(__file__).parent
-REV3 = HERE.parent.parent / 'ONE_DOF_RW' / 'rev3' / 'mechanical'
+REV3 = HERE.parent.parent / 'String_Rev3' / 'mechanical'   # this folder is ONE_DOF_RW/Edge_Rev1/_old_two_half_cube
 
 
 def load(name, p):

@@ -3,7 +3,7 @@
     python build_assembly_page.py [artifact_out]
 
 Run ../mechanical/make_cube_parts.py first so viewer_data.json matches the current design. Writes
-  ../../CTS_Simple_Visulizers/Edge Cube Assembly/index.html   a complete HTML document for opening locally (three.js comes from jsDelivr)
+  ../../../CTS_Simple_Visulizers/Edge Cube Assembly/index.html   a complete HTML document for opening locally (three.js comes from jsDelivr)
   artifact_out (optional)                                     the same page without the document wrapper, for publishing as an Artifact (the publisher adds its own)
 """
 import json
@@ -12,7 +12,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent / 'mechanical' / 'viewer_data.json'
-OUT = HERE.parent.parent / 'CTS_Simple_Visulizers' / 'Edge Cube Assembly' / 'index.html'
+OUT = HERE.parent.parent.parent / 'CTS_Simple_Visulizers' / 'Edge Cube Assembly' / 'index.html'
 
 cad = json.loads(DATA.read_text(encoding='utf-8'))
 need = {'base', 'cap', 'wheel', 'bolts', 'motor', 'board', 'hw', 'screws', 'imu', 'wires'}

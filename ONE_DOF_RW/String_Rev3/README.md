@@ -1,10 +1,10 @@
 # RW1DOF testbed, rev 3
 
-Rev 2 frame with four changes: a **100 mm flywheel** (was 80 mm), its ten rim weight-bolt holes now **threaded M4**, the **electronics moved to the outside** of the left wall, and a **battery tray that snaps** into the baseplate's existing slits instead of being screwed on. Only one printed frame part changed, the pack tray; the baseplate, walls, lid, lock rods and cotters are as in rev 2, so use those STLs, G-code and the slicer script from `../rev2`.
+Rev 2 frame with four changes: a **100 mm flywheel** (was 80 mm), its ten rim weight-bolt holes now **threaded M4**, the **electronics moved to the outside** of the left wall, and a **battery tray that snaps** into the baseplate's existing slits instead of being screwed on. Only one printed frame part changed, the pack tray; the baseplate, walls, lid, lock rods and cotters are as in rev 2, so use those STLs, G-code and the slicer script from `../String_Rev2`.
 
 ## Battery tray snap fit
 
-The tray snaps onto the rev 2 baseplate without screws, and **the baseplate is unchanged** (`rev2/.../base_pillars.stl`, byte for byte). It uses the plate's four existing plain slits (33.4 x 6.4 mm, at x = +-28 + 0 to 30, y = +-39).
+The tray snaps onto the rev 2 baseplate without screws, and **the baseplate is unchanged** (`String_Rev2/.../base_pillars.stl`, byte for byte). It uses the plate's four existing plain slits (33.4 x 6.4 mm, at x = +-28 + 0 to 30, y = +-39).
 
 - **Put it on:** load the pack, hold the tray under the plate and push it straight up. The four spring leaves flex in, pass through the slits and click out over the slit edges. Nothing to line up in y.
 - **Take it off:** pull the tray down firmly, or press the four barbs in from above (they stand 2.6 mm above the plate) and lower it. It snaps off the same way it went on.

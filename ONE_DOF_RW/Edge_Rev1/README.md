@@ -170,5 +170,5 @@ python mechanical\export_print_ready.py    # print-oriented STLs in print_ready\
 python analysis\check_cube.py              # stack, spin and wire clearance, assembly paths, balance, simulated recovery
 python analysis\render_cube.py             # numpy + matplotlib; the two preview images
 python analysis\render_section.py          # the labelled section drawing
-python analysis\build_assembly_page.py     # the 3D assembly page in ..\CTS_Simple_Visulizers\Edge Cube Assembly
+python analysis\build_assembly_page.py     # the 3D assembly page in ..\..\CTS_Simple_Visulizers\Edge Cube Assembly
 ```

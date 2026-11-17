@@ -1,7 +1,7 @@
 """Balancing wheel module: a thin 90 x 90 x 44 mm frame that stands on one edge, with the 2804 motor and a D74 wheel inside and nothing else on board but
 the IMU. The ESP32, motor driver and power supply stay off the body on a light cable.
 
-    python make_cube_parts.py        # needs numpy + manifold3d (the toolchain of ONE_DOF_RW/rev3 and SWINGUP_RWP)
+    python make_cube_parts.py        # needs numpy + manifold3d (the toolchain of ONE_DOF_RW/String_Rev3 and SWINGUP_RWP)
 
 Every surface that faces down in the print orientation is designed to lean no more than OVERHANG degrees from vertical (the limit asked for is 40), so the
 parts print without supports. A flat ceiling would be 90 degrees. To get there the module is four printed parts:
@@ -38,7 +38,7 @@ import numpy as np
 import manifold3d as m3
 
 HERE = Path(__file__).parent
-REV3 = HERE.parent.parent / 'ONE_DOF_RW' / 'rev3' / 'mechanical'
+REV3 = HERE.parent.parent.parent / 'String_Rev3' / 'mechanical'   # this folder is ONE_DOF_RW/Edge_Rev1/_old_plate_on_fins/mechanical
 
 
 def load(name, p):

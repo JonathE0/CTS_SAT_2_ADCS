@@ -1,0 +1,4 @@
+# Versions used for the initial computational validation (Python 3.14).
+numpy==2.5.5
+manifold3d==3.5.5
+matplotlib==3.11.2

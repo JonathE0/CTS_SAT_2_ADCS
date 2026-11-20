@@ -5,13 +5,13 @@
 
 int main() {
     assert(motorDutyForRate(0.0f) == 0);
-    assert(motorDutyForRate(4.9f) == 0);
-    assert(motorDutyForRate(-5.0f) == 0);
-    assert(motorDutyForRate(47.5f) == 64);
-    assert(motorDutyForRate(-47.5f) == -64);
-    assert(motorDutyForRate(90.0f) == 128);
-    assert(motorDutyForRate(500.0f) == 128);
-    assert(motorDutyForRate(-500.0f) == -128);
+    assert(motorDutyForRate(1.9f) == 0);
+    assert(motorDutyForRate(-2.0f) == 0);
+    assert(motorDutyForRate(47.5f) == 91);
+    assert(motorDutyForRate(-47.5f) == -91);
+    assert(motorDutyForRate(90.0f) == 176);
+    assert(motorDutyForRate(500.0f) == 255);
+    assert(motorDutyForRate(-500.0f) == -255);
     assert(motorDutyForRate(std::numeric_limits<float>::quiet_NaN()) == 0);
     assert(motorDutyForRate(std::numeric_limits<float>::infinity()) == 0);
 

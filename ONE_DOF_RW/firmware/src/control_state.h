@@ -34,6 +34,53 @@ struct ControlState {
     static constexpr uint32_t TIMEOUT_MS = 2000;
     static constexpr float MAX_KP = 20.0f;
     static constexpr float MAX_KI = 20.0f;
+    // Relative, unwrapped Y angle; zero is established after calibration.
+    bool positionMode = false;
+    float angleDeg = 0.0f;
+    float targetAngleDeg = 0.0f;
+    float positionGain = 0.5f; // Desired deg/s per degree of position error.
+    float maxPositionRateDps = 10.0f;
+    bool angleValid = true;
+    bool hasAngleTime = false;
+    uint32_t lastAngleMs = 0;
+    float previousRateDps = 0.0f;
+
+    bool configurePosition(bool selected, float target, float gain, float maxRate) {
+        if (fault || calibrating || !std::isfinite(target) || std::fabs(target) > 3600 ||
+            !std::isfinite(gain) || gain <= 0 || gain > 20 ||
+            !std::isfinite(maxRate) || maxRate <= 0 || maxRate > 100) return false;
+        disable();
+        positionMode = selected;
+        targetAngleDeg = target;
+        positionGain = gain;
+        maxPositionRateDps = maxRate;
+        return true;
+    }
+
+    bool zeroPosition() {
+        if (fault || calibrating) return false;
+        disable();
+        angleDeg = targetAngleDeg = 0.0f;
+        angleValid = true;
+        hasAngleTime = false;
+        return true;
+    }
+
+    void updateAngle(float rateDps, uint32_t now) {
+        if (fault || calibrating || !angleValid) return;
+        const uint32_t elapsed = now - lastAngleMs;
+        if (!std::isfinite(rateDps) || (hasAngleTime && elapsed > 200)) {
+            angleValid = false;
+            if (enabled && positionMode) latchFault();
+            return;
+        }
+        if (hasAngleTime)
+            angleDeg += 0.5f * (previousRateDps + rateDps) * (elapsed * 0.001f);
+        previousRateDps = rateDps;
+        lastAngleMs = now;
+        hasAngleTime = true;
+    }
+
     bool enabled = false;
     bool manual = false;
     int manualDirection = 0;
@@ -91,7 +138,7 @@ struct ControlState {
     }
 
     bool enable(uint32_t now, uint32_t client) {
-        if (fault || calibrating || client == 0) {
+        if (fault || calibrating || client == 0 || (positionMode && !angleValid)) {
             return false;
         }
         disable();
@@ -164,6 +211,9 @@ struct ControlState {
     }
 
     void finishGyroCalibration() {
+        angleDeg = targetAngleDeg = 0.0f;
+        angleValid = true;
+        hasAngleTime = false;
         gyroRangeDps = requestedGyroRangeDps;
         calibrating = false;
         // Never resume a previous control session after reconfiguration.
@@ -190,6 +240,7 @@ struct ControlState {
 
     int duty(float rateDps, uint32_t now) {
         expire(now);
+        updateAngle(rateDps, now);
         if (fault || calibrating) return 0;
         if (manual) {
             const int target = (throttlePercent * MOTOR_MAX_DUTY + 50) / 100;
@@ -202,10 +253,22 @@ struct ControlState {
             resetIntegral();
             return 0;
         }
-        if (ki == 0.0f) {
+        if (ki == 0.0f && !positionMode) {
             resetIntegral();
             return motorDutyForRate(rateDps, kp);
         }
+        float error = rateErrorOutsideDeadband(rateDps);
+        if (positionMode) {
+            const float desiredRate = limitMagnitude(positionGain * (targetAngleDeg - angleDeg),
+                                                      maxPositionRateDps);
+            error = rateDps - desiredRate; // Preserve the existing motor sign.
+        }
+        const float proportional = kp * error;
+        if (ki == 0.0f) {
+            resetIntegral();
+            return std::lround(limitMagnitude(proportional, MOTOR_MAX_DUTY));
+        }
+
         uint32_t elapsedMs = hasPiTime ? now - lastPiMs : 0;
         lastPiMs = now;
         hasPiTime = true;
@@ -215,19 +278,13 @@ struct ControlState {
             integralDuty = 0.0f;
             elapsedMs = 0;
         }
-        const float magnitude = std::fmax(0.0f, std::fabs(rateDps) - MOTOR_RATE_DEADBAND_DPS);
-        const float error = rateDps < 0.0f ? -magnitude : magnitude;
-        const float proportional = kp * error;
         const float delta = ki * error * (elapsedMs * 0.001f);
-        const float candidate = std::fmax(-float(MOTOR_MAX_DUTY),
-            std::fmin(float(MOTOR_MAX_DUTY), integralDuty + delta));
+        const float candidate = limitMagnitude(integralDuty + delta, MOTOR_MAX_DUTY);
         const float requested = proportional + candidate;
         // Conditional integration: allow unwinding, but do not accumulate
         // correction that pushes an already saturated output further out.
         if (!((requested > MOTOR_MAX_DUTY && delta > 0) ||
               (requested < -MOTOR_MAX_DUTY && delta < 0))) integralDuty = candidate;
-        const float output = std::fmax(-float(MOTOR_MAX_DUTY),
-            std::fmin(float(MOTOR_MAX_DUTY), proportional + integralDuty));
-        return static_cast<int>(std::lround(output));
+        return std::lround(limitMagnitude(proportional + integralDuty, MOTOR_MAX_DUTY));
     }
 };

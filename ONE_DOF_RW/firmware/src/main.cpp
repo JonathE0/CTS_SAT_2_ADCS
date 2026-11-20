@@ -106,6 +106,10 @@ void sendState() {
     const float kp = control.kp;
     const float ki = control.ki;
     const float integral = control.integralDuty;
+    const bool position = control.positionMode;
+    const bool angleValid = control.angleValid;
+    const float angle = control.angleDeg, target = control.targetAngleDeg;
+    const float positionGain = control.positionGain, maxRate = control.maxPositionRateDps;
     const float rate = latestRateDps;
     const int duty = latestDuty;
     const bool calibrating = control.calibrating;
@@ -113,14 +117,15 @@ void sendState() {
     const bool ramp = control.rampTest;
     const GyroSettings gyro = gyroSettings(control.gyroRangeDps);
     portEXIT_CRITICAL(&controlMux);
-    char json[384];
+    char json[640];
     snprintf(json, sizeof(json),
              "{\"enabled\":%s,\"fault\":%s,\"kp\":%.6g,\"ki\":%.6g,\"integral\":%.4g,\"rate\":%.2f,\"pwm\":%d,"
              "\"calibrating\":%s,\"range\":%d,\"lsb_per_dps\":%.6g,\"filter_hz\":%d,"
-             "\"manual\":%s,\"direction\":%d,\"throttle\":%d,\"inverted\":%s,\"ramp\":%s}",
+             "\"manual\":%s,\"direction\":%d,\"throttle\":%d,\"inverted\":%s,\"ramp\":%s,\"position\":%s,\"angle_valid\":%s,\"angle\":%.6g,\"target\":%.6g,\"position_gain\":%.6g,\"max_rate\":%.6g}",
              enabled ? "true" : "false", fault ? "true" : "false", kp, ki, integral, rate, duty,
              calibrating ? "true" : "false", gyro.rangeDps, gyro.lsbPerDps, GYRO_FILTER_HZ,
-             manual ? "true" : "false", direction, throttle, inverted ? "true" : "false", ramp ? "true" : "false");
+             manual ? "true" : "false", direction, throttle, inverted ? "true" : "false", ramp ? "true" : "false",
+             position ? "true" : "false", angleValid ? "true" : "false", angle, target, positionGain, maxRate);
     server.sendHeader("Cache-Control", "no-store");
     server.send(200, "application/json", json);
 }
@@ -205,7 +210,45 @@ bool startWifiControl() {
         else control.disable();
         portEXIT_CRITICAL(&controlMux);
         if (!accepted) {
-            server.send(409, "text/plain", "Cannot enable: calibrating, fault latched, or invalid page owner. Reset after a fault.");
+            server.send(409, "text/plain", "Cannot enable: calibrating, fault latched, invalid page owner, or invalid angle. Zero the angle if needed. Reset after a fault.");
+            return;
+        }
+        sendState();
+    });
+    server.on("/position", HTTP_POST, []() {
+        if (!validControlRequest()) return;
+        const String mode = server.arg("mode");
+        const bool position = mode == "position";
+        auto number = [](const String &text, float &value) {
+            if (text.isEmpty() || text.length() > 32) return false;
+            char *end;
+            errno = 0;
+            value = strtof(text.c_str(), &end);
+            return end != text.c_str() && end == text.c_str() + text.length() &&
+                errno != ERANGE && std::isfinite(value);
+        };
+        float target, gain, maxRate;
+        if ((!position && mode != "rate") || !number(server.arg("target"), target) ||
+            !number(server.arg("gain"), gain) || !number(server.arg("max_rate"), maxRate)) {
+            server.send(400, "text/plain", "Invalid position settings.");
+            return;
+        }
+        portENTER_CRITICAL(&controlMux);
+        const bool accepted = control.configurePosition(position, target, gain, maxRate);
+        portEXIT_CRITICAL(&controlMux);
+        if (!accepted) {
+            server.send(409, "text/plain", "Blocked or out of range: target +/-3600, gain (0,20], rate (0,100].");
+            return;
+        }
+        sendState();
+    });
+    server.on("/zero-position", HTTP_POST, []() {
+        if (!validControlRequest()) return;
+        portENTER_CRITICAL(&controlMux);
+        const bool accepted = control.zeroPosition();
+        portEXIT_CRITICAL(&controlMux);
+        if (!accepted) {
+            server.send(409, "text/plain", "Cannot zero during calibration or fault.");
             return;
         }
         sendState();

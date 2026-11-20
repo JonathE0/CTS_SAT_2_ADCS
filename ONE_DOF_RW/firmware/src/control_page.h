@@ -20,7 +20,18 @@ dl{display:grid;grid-template-columns:1fr 1fr;gap:12px}dd{margin:0;text-align:ri
 <button id="start" disabled>Enable automatic control</button><button id="stop">Disable control</button>
 <small>Keep this page open. Losing contact for 2 seconds disables control.
 Zero PWM lets the motor coast; the flywheel may still move.</small></section>
-<section><h2>Motor direction</h2>
+<section><h2>Position control</h2>
+<p>Relative Y angle: <strong id="angle">--</strong></p>
+<label for="mode">Automatic mode</label><select id="mode"><option value="rate">Stop rotation (rate)</option><option value="position">Hold relative angle</option></select>
+<label for="target">Target angle (degrees, unwrapped)</label><input id="target" type="number" value="0" min="-3600" max="3600" step="any">
+<label for="position-gain">Position gain (1/s)</label><input id="position-gain" type="number" value="0.5" step="any">
+<label for="max-rate">Maximum target rate (deg/s)</label><input id="max-rate" type="number" value="10" step="any">
+<button id="apply-position" disabled>Apply mode &amp; target</button>
+<button id="zero-position" disabled>Set current angle to zero</button>
+<p><small>Both buttons turn control OFF; enable again to run. Angle is integrated from the gyro and drifts.
+Calibration and reboot reset angle and target to zero. Zero here also resets the target.
+Position mode uses Kp/Ki on rate error without the 2 deg/s deadband.</small></p>
+</section><section><h2>Motor direction</h2>
 <button id="invert-direction" disabled>Motor direction: connecting...</button><br>
 <small>Tap to invert automatic and manual motor direction. This turns control OFF;
 enable again to test. Reboot restores INVERTED.</small></section>
@@ -36,15 +47,15 @@ Keep this page open. Stop wheel cancels the test; the wheel then coasts.</small>
 <small>Choose throttle, then a direction. The wheel runs until Stop wheel or a lost connection.
 Manual mode turns automatic control OFF. Apply throttle updates the running manual command.
 PWM is not measured wheel speed. Left/right depend on wheel mounting and motor wiring.</small></section>
-<section><label for="kp">Kp (PWM per deg/s)</label>
+<section><label for="kp">Rate-loop Kp (PWM per deg/s of error)</label>
 <input id="kp" type="number" min="0" max="20" step="any" value="2" inputmode="decimal">
 <button id="apply" disabled>Apply Kp</button><br>
 <small>Range 0 to 20. Changes apply immediately. Reboot restores Kp = 2 and control OFF.</small>
-</section><section><label for="ki">Ki (PWM per degree of accumulated rate error)</label>
+</section><section><label for="ki">Rate-loop Ki (PWM per degree of accumulated rate error)</label>
 <input id="ki" type="number" min="0" max="20" step="any" value="0" inputmode="decimal">
 <button id="apply-ki" disabled>Apply Ki</button><br>
 <small>Ki = 0 disables integral control. Range 0 to 20. Accumulation uses elapsed time,
-ignores the +/-2 deg/s deadband, and stops growing into PWM saturation.
+uses the +/-2 deg/s deadband in rate mode only, and stops growing into PWM saturation.
 The integral can keep a correction at zero rate. Changing either gain clears it;
 Stop, mode changes, calibration, faults and disconnects clear it too.
 Reboot restores Ki = 0.</small>
@@ -68,7 +79,9 @@ let requestQueue = Promise.resolve(), commandVersion = 0, commandsPending = 0;
 let rangeEditing = false;
 let manualDirection = 0;
 let motorInverted = true;
-let kiEditing = false;
+let kiEditing = false, positionEditing = false;
+for (const id of ['mode','target','position-gain','max-rate'])
+  $(id).addEventListener('input', () => positionEditing = true);
 $('ki').addEventListener('input', () => kiEditing = true);
 $('kp').addEventListener('input', () => editing = true);
 $('gyro-range').addEventListener('change', () => rangeEditing = true);
@@ -90,6 +103,15 @@ async function request(path, data) {
 function render(s) {
   ready = true;
   $('state').textContent = s.fault ? 'FAULT: reset ESP32 to recalibrate' : s.calibrating ? 'Calibrating: keep sensor still' : s.manual ? (s.ramp ? 'Ramp ' : 'Manual ') + (s.direction < 0 ? 'LEFT' : 'RIGHT') + ': ' + s.throttle + '% PWM limit' : s.enabled ? 'Control ON' : 'Control OFF';
+  $('angle').textContent = s.angle_valid === false ? 'Reference lost. Zero the angle.' : s.angle.toFixed(2) + ' deg';
+  $('apply-position').disabled = s.fault || s.calibrating;
+  $('zero-position').disabled = s.fault || s.calibrating;
+  if (!positionEditing) {
+    $('mode').value = s.position ? 'position' : 'rate';
+    $('target').value = s.target;
+    $('position-gain').value = s.position_gain;
+    $('max-rate').value = s.max_rate;
+  }
   $('rate').textContent = s.rate.toFixed(1) + ' deg/s';
   $('pwm').textContent = s.pwm + ' / 255';
   $('gain').textContent = String(s.kp);
@@ -97,7 +119,7 @@ function render(s) {
   $('integral').textContent = s.integral.toFixed(1) + ' PWM';
   if (!kiEditing) $('ki').value = s.ki;
   if (!editing) $('kp').value = s.kp;
-  $('start').disabled = s.fault || s.calibrating || s.enabled;
+  $('start').disabled = s.fault || s.calibrating || s.enabled || (s.position && !s.angle_valid);
   $('apply').disabled = s.fault;
   $('apply-ki').disabled = s.fault;
   $('apply-range').disabled = s.fault || s.calibrating;
@@ -119,6 +141,7 @@ function render(s) {
 }
 function lost(error) {
   ownsControl = false; ready = false;
+  $('apply-position').disabled = true; $('zero-position').disabled = true;
   $('start').disabled = true; $('apply').disabled = true;
   $('apply-ki').disabled = true;
   $('apply-range').disabled = true;
@@ -227,6 +250,28 @@ $('apply-range').onclick = async () => {
   } catch (e) { if (version === commandVersion) lost(e); }
   finally { commandsPending--; }
 };
+async function positionCommand(zero) {
+  if (!ready || commandsPending) return;
+  const target = Number($('target').value), gain = Number($('position-gain').value),
+    maxRate = Number($('max-rate').value);
+  if (!zero && (![$('target').value,$('position-gain').value,$('max-rate').value].every(x => String(x).trim()) ||
+      ![target,gain,maxRate].every(Number.isFinite) || Math.abs(target)>3600 ||
+      gain<=0 || gain>20 || maxRate<=0 || maxRate>100)) {
+    $('message').textContent = 'Use target +/-3600 deg, gain (0,20], rate (0,100].'; return;
+  }
+  const version = ++commandVersion;
+  commandsPending++; ownsControl = false;
+  try {
+    const s = await request(zero ? '/zero-position' : '/position', zero ? {} :
+      {mode:$('mode').value,target:String(target),gain:String(gain),max_rate:String(maxRate)});
+    if (version !== commandVersion) return;
+    positionEditing = false; render(s);
+    $('message').textContent = 'Position settings applied. Control OFF; enable when ready.';
+  } catch(e) { if (version === commandVersion) lost(e); }
+  finally { commandsPending--; }
+}
+$('apply-position').onclick = () => positionCommand(false);
+$('zero-position').onclick = () => positionCommand(true);
 async function poll() {
   if (busy || commandsPending) return;
   const version = commandVersion;

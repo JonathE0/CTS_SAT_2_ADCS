@@ -325,3 +325,16 @@ and [ESP32 Dev Module board definition](https://docs.platformio.org/en/stable/bo
 MPU6050 readings follow the [Adafruit library example](https://github.com/adafruit/Adafruit_MPU6050/blob/master/examples/basic_readings/basic_readings.ino).
 Motor interface: [ST L298 datasheet](https://www.st.com/resource/en/datasheet/l298.pdf).
 PWM API: [Espressif LEDC](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/ledc.html).
+
+## Relative position control
+
+On the Wi-Fi page, select **Hold relative angle**, set the target in degrees,
+apply, then enable automatic control. **Set current angle to zero** resets the
+angle and target and turns control off. Rate mode is the reboot default.
+
+The position loop turns angle error into a capped target rate (defaults: 0.5/s
+gain and 10 deg/s cap). The existing PI loop tracks that rate without a deadband.
+
+The angle comes from the Y gyro and drifts over time. If the reference is lost,
+zero it again. If it is lost during an active hold, control faults and requires
+a reset.

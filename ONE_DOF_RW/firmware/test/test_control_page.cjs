@@ -3,11 +3,11 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const script = fs.readFileSync('src/control_page.h', 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
-const state = enabled => ({enabled, manual:false, direction:0, throttle:0, fault:false, calibrating:false, range:500,
+const state = enabled => ({enabled, angle:0, angle_valid:true, target:0, position:false, position_gain:0.5, max_rate:10, manual:false, direction:0, throttle:0, fault:false, calibrating:false, range:500,
   lsb_per_dps:65.5, filter_hz:21, kp:2, ki:0, integral:0, rate:12, inverted:true, ramp:false, pwm:enabled ? 20 : 0});
 
 function page() {
-  const elements = Object.fromEntries(['kp','state','rate','pwm','gain','start','stop','apply','message',
+  const elements = Object.fromEntries(['angle','mode','target','position-gain','max-rate','apply-position','zero-position','kp','state','rate','pwm','gain','start','stop','apply','message',
     'gyro-range','range-value','sensitivity','filter','apply-range',
     'left','right','manual-stop','throttle','throttle-value','apply-throttle','applied-throttle','invert-direction','ramp-left','ramp-right','ki','apply-ki','integral','ki-value']
     .map(id => [id, {value:'2', disabled:false, textContent:'', addEventListener(){}}]));
@@ -23,6 +23,23 @@ function page() {
 }
 
 (async () => {
+  const position = page(); await flush();
+  position.calls[0].respond(state(false)); await flush();
+  position.elements.mode.value = 'position';
+  position.elements.target.value = '30';
+  position.elements['position-gain'].value = '0.5';
+  position.elements['max-rate'].value = '5';
+  const applyPosition = position.elements['apply-position'].onclick(); await flush();
+  assert.equal(position.calls[1].path, '/position');
+  assert.equal(position.calls[1].options.body.get('target'), '30');
+  position.calls[1].respond({...state(false), position:true, target:30, angle:1});
+  await applyPosition;
+  assert.equal(position.elements.angle.textContent, '1.00 deg');
+  const zero = position.elements['zero-position'].onclick(); await flush();
+  assert.equal(position.calls[2].path, '/zero-position');
+  position.calls[2].respond({...state(false), position:true, target:0, angle:0});
+  await zero;
+
   // A Stop while Start is pending must be sent after Start, and must not
   // leave this page heartbeating a stale enabled state.
   const p = page(); await flush();

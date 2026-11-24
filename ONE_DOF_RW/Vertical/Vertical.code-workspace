@@ -1,0 +1,7 @@
+{
+  "folders": [{"path": "."}],
+  "settings": {
+    "files.associations": {"*.h": "cpp"},
+    "files.exclude": {"**/.pio": true, "**/.pio-core": true}
+  }
+}

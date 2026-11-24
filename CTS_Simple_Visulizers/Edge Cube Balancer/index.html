@@ -1,0 +1,509 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<title>Edge Cube Balancer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an instrument panel. Live 3D view and a strip chart on the left, the build controls and the limits computed from that build on the right,
+   then a cube-size sweep and the critique underneath. */
+:root {
+  --bg: #eceff0; --panel: #f8f9fa; --ink: #182126; --muted: #55646c; --line: #d2d9dc;
+  --accent: #0e7c86; --accent-ink: #ffffff; --good: #1f7a4d; --warn: #9a6200; --bad: #b4332a;
+  --view: #dde4e7; --grid: #c3ccd1; --c1: #0e7c86; --c2: #c4620a; --c3: #6b4fb3; --soft: #e6ebed;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --font-body: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1518; --panel: #172025; --ink: #e4ebee; --muted: #93a4ac; --line: #2a373e;
+    --accent: #4cc3cf; --accent-ink: #06191c; --good: #5cc78e; --warn: #e0a23a; --bad: #ec7468;
+    --view: #0c1215; --grid: #22303a; --c1: #4cc3cf; --c2: #f0904a; --c3: #a995e8; --soft: #1e2a30;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1518; --panel: #172025; --ink: #e4ebee; --muted: #93a4ac; --line: #2a373e;
+  --accent: #4cc3cf; --accent-ink: #06191c; --good: #5cc78e; --warn: #e0a23a; --bad: #ec7468;
+  --view: #0c1215; --grid: #22303a; --c1: #4cc3cf; --c2: #f0904a; --c3: #a995e8; --soft: #1e2a30;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.page { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: 0.01em; }
+h1 { font-size: 2.3rem; line-height: 1.05; }
+h2 { font-size: 1.15rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+h3 { font-size: 1.25rem; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 66ch; margin-top: 6px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(340px, 1fr); gap: 16px; align-items: start; }
+.left, .right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
+.viewbox { position: relative; padding: 0; overflow: hidden; background: var(--view); }
+#view { display: block; width: 100%; height: 520px; touch-action: none; }
+.chips { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; }
+.chip { font-family: var(--font-mono); font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: var(--ink); }
+.chip.state { font-weight: 500; }
+.chip.ok { color: var(--good); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
+.hint { position: absolute; right: 10px; bottom: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
+#strip { display: block; width: 100%; height: 260px; margin-top: 8px; }
+.controls { display: flex; flex-direction: column; gap: 12px; }
+.row { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; row-gap: 2px; align-items: baseline; }
+.row label { font-size: 13px; color: var(--muted); }
+.row output { font-family: var(--font-mono); font-size: 13px; }
+.row input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+.toggles { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+.toggles label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.toggles input { margin-top: 4px; accent-color: var(--accent); }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+button { font: inherit; font-size: 14px; font-weight: 500; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--soft); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:hover { filter: brightness(1.06); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.results table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+.results td { padding: 5px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+.results td:last-child { text-align: right; font-family: var(--font-mono); font-size: 13px; padding-left: 10px; }
+.results td:first-child { width: 58%; }
+.results tr:last-child td { border-bottom: 0; }
+.verdict { margin-top: 10px; padding: 10px 12px; border-radius: 6px; background: var(--soft); border-left: 4px solid var(--muted); font-size: 14px; }
+.verdict.ok { border-left-color: var(--good); } .verdict.warn { border-left-color: var(--warn); } .verdict.bad { border-left-color: var(--bad); }
+.verdict b { font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.02em; }
+.sweep svg { width: 100%; height: auto; display: block; margin-top: 8px; }
+.sweep .note { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.two { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.two ul { margin: 10px 0 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 9px; }
+.two li::marker { color: var(--muted); }
+.two li b { font-weight: 600; }
+.foot { color: var(--muted); font-size: 13px; max-width: 90ch; }
+.mono { font-family: var(--font-mono); font-size: 0.92em; }
+@media (max-width: 880px) { .grid, .two { grid-template-columns: minmax(0, 1fr); } #view { height: 340px; } h1 { font-size: 1.9rem; } }
+</style>
+
+<main class="page">
+  <header>
+    <h1>Edge Cube Balancer</h1>
+    <p class="lede">A cube standing on one edge, with one 2804 motor and wheel inside. Drag the view, push the cube, and change the build. Everything on the right is computed from the build you can see.</p>
+  </header>
+
+  <section class="grid">
+    <div class="left">
+      <div class="card viewbox">
+        <canvas id="view" aria-label="3D view of the cube balancing on one edge"></canvas>
+        <div class="chips">
+          <span class="chip state" id="chipState">Balancing</span>
+          <span class="chip" id="chipLean">lean 0.0°</span>
+          <span class="chip" id="chipWheel">wheel 0 rpm</span>
+          <span class="chip" id="chipTorque">torque 0%</span>
+        </div>
+        <span class="hint">drag to orbit, scroll to zoom</span>
+      </div>
+      <div class="card">
+        <h2>Last 6 seconds</h2>
+        <canvas id="strip" aria-label="Strip chart of lean, wheel speed and motor torque"></canvas>
+      </div>
+    </div>
+
+    <div class="right">
+      <form class="card controls" id="controls" onsubmit="return false">
+        <h2>Build</h2>
+        <div class="row"><label for="inA">Cube side</label><output id="outA"></output><input id="inA" type="range" min="60" max="150" step="5" value="90"></div>
+        <div class="row"><label for="inD">Wheel diameter</label><output id="outD"></output><input id="inD" type="range" min="40" max="136" step="2" value="74"></div>
+        <div class="row"><label for="inB">Rim weight bolts (M4 x 12)</label><output id="outB"></output><input id="inB" type="range" min="0" max="13" step="1" value="7"></div>
+        <div class="row"><label for="inBat">Battery and wiring</label><output id="outBat"></output><input id="inBat" type="range" min="25" max="75" step="1" value="38"></div>
+        <div class="row"><label for="inT">Motor torque limit</label><output id="outT"></output><input id="inT" type="range" min="0.015" max="0.06" step="0.001" value="0.03"></div>
+        <div class="row"><label for="inS">Controller speed</label><output id="outS"></output><input id="inS" type="range" min="0.6" max="1.6" step="0.05" value="1"></div>
+        <div class="row"><label for="inL">Start lean</label><output id="outL"></output><input id="inL" type="range" min="0" max="20" step="0.5" value="5"></div>
+        <div class="toggles">
+          <label><input id="ctl" type="checkbox" checked><span>Controller on</span></label>
+          <label><input id="across" type="checkbox"><span>Wheel axis across the edge, as in the first sketch</span></label>
+        </div>
+        <div class="buttons">
+          <button type="button" class="primary" id="btnReset">Reset</button>
+          <button type="button" id="btnL">Push left</button>
+          <button type="button" id="btnR">Push right</button>
+        </div>
+      </form>
+
+      <div class="card results" id="results">
+        <h2>Limits of this build</h2>
+        <table>
+          <tr><td>Mass</td><td id="rM"></td></tr>
+          <tr><td>Centre of mass above the edge</td><td id="rL"></td></tr>
+          <tr><td>Gravity torque at 1 rad (Mgl)</td><td id="rMgl"></td></tr>
+          <tr><td>Motor torque / Mgl</td><td id="rRatio"></td></tr>
+          <tr><td>Unstable pole (falls 2.7x per)</td><td id="rPole"></td></tr>
+          <tr><td>Wheel spin inertia</td><td id="rJw"></td></tr>
+          <tr><td>Wheel momentum at 272 rad/s</td><td id="rH"></td></tr>
+          <tr><td>Most lean it can recover</td><td id="rLean"></td></tr>
+          <tr><td>Limited by</td><td id="rLim"></td></tr>
+        </table>
+        <div class="verdict" id="verdict"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card sweep">
+    <h2>How much lean it can recover, by cube size</h2>
+    <svg id="sweep" viewBox="0 0 720 270" role="img" aria-label="Bar chart of the most lean the cube can recover for each cube size"></svg>
+    <p class="note" id="sweepNote">Wheel diameter is the cube side minus 16 mm and the bolts scale with it. Battery and torque limit follow the sliders above.</p>
+  </section>
+
+  <section class="two">
+    <div class="card">
+      <h3>Where I'd push back</h3>
+      <ul>
+        <li><b>The motor is small for a cube.</b> The 2804 gives about 0.03 N·m. A cube's centre of mass sits 0.71 of its side above the pivot edge, so at 90 to 120 mm gravity pulls with 0.10 to 0.16 N·m per radian of lean. The motor can only out-pull gravity up to about 17 degrees at 90 mm and 11 degrees at 120 mm, and the angle it can actually recover from is smaller than that.</li>
+        <li><b>There is a size that works, and it is narrow.</b> From 90 mm up, torque is the limit and the recoverable lean keeps falling as the cube grows. At 80 mm and below the wheel runs out of speed first, so a smaller cube stops helping much. The bar colours in the chart show which limit applies.</li>
+        <li><b>The wheel axis has to lie along the pivot edge.</b> In the first sketch the wheel faced out of the plate, across the edge. Tick the box to see it: the motor spins up and the cube falls anyway.</li>
+        <li><b>A flat plate with the wheel low would balance better.</b> In the same simulation, with the same motor, a 100 x 150 mm plate with the wheel 45 mm up recovers about 20 degrees, against about 13 for a 90 mm cube, because its centre of mass is lower. The cube is better as a complete package, not as an easier balance.</li>
+        <li><b>A cube on its corner is a different project.</b> Three axes need three motors and a much bigger torque budget than 0.03 N·m. Treat this as step one, and keep the frame able to take two more wheels.</li>
+        <li><b>It cannot jump up.</b> Standing a Cubli up from rest needs a brake that dumps wheel momentum in a hurry. Here you set it on its edge by hand and let go inside the recoverable angle.</li>
+        <li><b>A few millimetres of imbalance matters.</b> At 90 mm the centre of mass is 64 mm up, so 2 mm sideways moves the balance point by about 1.8 degrees. Plan trim weights and let the controller learn the offset.</li>
+        <li><b>The numbers are the ideal case.</b> Perfect sensors, no delay, no friction, no noise. Expect less on the bench.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>What the cube gets right</h3>
+      <ul>
+        <li><b>Nothing trails behind it.</b> The battery and electronics ride inside, so no cable tugs on the pivot, which is the biggest disturbance the free-standing plate had.</li>
+        <li><b>The frame is the pivot.</b> One edge is the contact line, so there is no hinge or clip to build.</li>
+        <li><b>The centre of mass is symmetric</b> and the wheel is protected by the frame when it falls.</li>
+        <li><b>It grows.</b> The same frame can take a second and third wheel later, and a bigger motor such as the 4015 kit in the same Amazon listing, which its seller rates at 0.32 N·m (an unchecked claim).</li>
+      </ul>
+      <p class="foot" style="margin-top:14px">Model: the cube pivots about its bottom edge; the motor's torque on the wheel pushes back on the frame; a three-state controller (lean, lean rate, wheel speed) with poles placed at 1.5, 1.9 and 0.6 times the cube's own falling rate; torque capped at the limit and reduced as the wheel nears its 272 rad/s no-load speed at 12 V. The cube's frame is 12 printed bars 5 mm square at 80 % of solid PLA; the wheel scales from your rev3 D100 wheel.</p>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = 9.81, W_NL = 272, RHO = 1.24e-3 * 0.8, DT = 0.001, FALL = Math.PI / 4;
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------------------------------------------------------------- model */
+  function makeModel(a, wheelD, bolts, battery) {
+    var d = Math.max(30, Math.min(wheelD, a - 14)), s = 5, elec = 25, motor = 45;
+    var mFrame = 12 * a * s * s * RHO * 1e-3;
+    var mRing = 0.026 * Math.pow(d / 100, 2);
+    var jRing = 4.45e-5 * Math.pow(d / 100, 4);
+    var rp = (d / 2 - 5.75) * 1e-3;
+    var mBolts = bolts * 2.3e-3;
+    var Jw = jRing + mBolts * rp * rp + 4.6e-6;
+    var mWheel = mRing + mBolts;
+    var mOther = (motor + battery + elec) * 1e-3;
+    var M = mFrame + mWheel + mOther;
+    var l = a / Math.SQRT2 * 1e-3;
+    var Jframe = 0.389 * mFrame * Math.pow(a * 1e-3, 2) + mFrame * l * l;
+    var J1 = Jframe + mWheel * l * l + mOther * l * l + 2.5e-5;
+    return { a: a, d: d, bolts: bolts, M: M, l: l, Mgl: M * G * l, J1: J1, Jw: Jw };
+  }
+  function gains(p, speed) {
+    var a = p.Mgl / p.J1, b = 1 / p.J1, c = 1 / p.Jw + 1 / p.J1, s = Math.sqrt(a);
+    var p1 = 1.5 * s * speed, p2 = 1.9 * s * speed, p3 = 0.6 * s * speed;
+    var e1 = p1 + p2 + p3, e2 = p1 * p2 + p1 * p3 + p2 * p3, e3 = p1 * p2 * p3;
+    var k3 = e3 * p.Jw / a, k1 = (e2 + a) / b, k2 = (e1 + c * k3) / b;
+    return [k1, k2, k3];
+  }
+  /* one 1 ms step; st = {th, thd, w, tau}; auth = false means the wheel axis cannot act on the tipping axis */
+  function step(p, st, K, tauMax, auth, ctl) {
+    var u = ctl ? K[0] * st.th + K[1] * st.thd + K[2] * st.w : 0;
+    var tau = Math.max(-tauMax, Math.min(tauMax, u));
+    if (tau * st.w > 0) tau *= Math.max(0, 1 - Math.abs(st.w) / W_NL);
+    st.tau = tau;
+    var g = auth ? 1 : 0;
+    function f(x0, x1) { var add = (p.Mgl * Math.sin(x0) - g * tau) / p.J1; return [x1, add, tau / p.Jw - g * add]; }
+    var x = [st.th, st.thd, st.w], k1 = f(x[0], x[1]);
+    var k2 = f(x[0] + 0.5 * DT * k1[0], x[1] + 0.5 * DT * k1[1]);
+    var k3 = f(x[0] + 0.5 * DT * k2[0], x[1] + 0.5 * DT * k2[1]);
+    var k4 = f(x[0] + DT * k3[0], x[1] + DT * k3[1]);
+    st.th = x[0] + DT / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]);
+    st.thd = x[1] + DT / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
+    st.w = x[2] + DT / 6 * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]);
+  }
+  function simulate(p, th0, tauMax, speed) {
+    var K = gains(p, speed), st = { th: th0, thd: 0, w: 0, tau: 0 }, wpk = 0, wsat = false;
+    for (var i = 0; i < 4000; i++) {
+      step(p, st, K, tauMax, true, true);
+      var aw = Math.abs(st.w);
+      if (aw > wpk) wpk = aw;
+      if (aw > 0.97 * W_NL) wsat = true;
+      if (Math.abs(st.th) > 0.6) return { ok: false, wpk: wpk, wsat: wsat };
+    }
+    return { ok: Math.abs(st.th) < 0.02 && Math.abs(st.thd) < 0.2, wpk: wpk, wsat: wsat };
+  }
+  function maxLean(p, tauMax, speed) {
+    if (!simulate(p, 0.002, tauMax, speed).ok) return { deg: 0, wpk: 0, limit: 'none' };
+    var lo = 0, hi = 0.6, i;
+    for (i = 0; i < 14; i++) { var mid = (lo + hi) / 2; if (simulate(p, mid, tauMax, speed).ok) lo = mid; else hi = mid; }
+    var best = simulate(p, lo, tauMax, speed), fail = simulate(p, hi, tauMax, speed);
+    return { deg: lo * 180 / Math.PI, wpk: best.wpk, limit: fail.wsat ? 'wheel speed' : 'torque' };
+  }
+  window.__cubeModel = { makeModel: makeModel, maxLean: maxLean };   // lets the numbers be checked against an independent script
+
+  /* ---------------------------------------------------------------- state and controls */
+  var P = {}, model, K, st, hist = [], spin = 0, fallen = false, simTime = 0, acc = 0, lastT = 0;
+  function readParams() {
+    P.a = +$('inA').value; P.d = +$('inD').value; P.b = +$('inB').value; P.bat = +$('inBat').value;
+    P.tau = +$('inT').value; P.spd = +$('inS').value; P.lean = +$('inL').value * Math.PI / 180;
+    P.ctl = $('ctl').checked; P.across = $('across').checked;
+    var dmax = P.a - 14;
+    $('inD').max = String(Math.floor(dmax / 2) * 2);
+    if (P.d > dmax) { P.d = Math.floor(dmax / 2) * 2; $('inD').value = P.d; }
+    $('outA').textContent = P.a + ' mm'; $('outD').textContent = P.d + ' mm (max ' + dmax + ')';
+    $('outB').textContent = P.b; $('outBat').textContent = P.bat + ' g';
+    $('outT').textContent = P.tau.toFixed(3) + ' N·m'; $('outS').textContent = P.spd.toFixed(2) + 'x';
+    $('outL').textContent = (P.lean * 180 / Math.PI).toFixed(1) + '°';
+  }
+  function resetSim() {
+    model = makeModel(P.a, P.d, P.b, P.bat);
+    K = gains(model, P.spd);
+    st = { th: P.lean, thd: 0, w: 0, tau: 0 };
+    fallen = false; spin = 0; simTime = 0; hist = [];
+    // run 1.2 s silently so the strip chart already shows the first recovery when the page first loads
+    for (var i = 0; i < 1200; i++) { advance(); }
+  }
+  function advance() {
+    if (!fallen) {
+      step(model, st, K, P.tau, !P.across, P.ctl);
+      if (Math.abs(st.th) >= FALL) { st.th = st.th > 0 ? FALL : -FALL; st.thd = 0; fallen = true; st.tau = 0; }
+    } else { st.tau = 0; st.w *= 0.9995; }
+    spin += st.w * DT; simTime += DT;
+    if (Math.round(simTime / DT) % 10 === 0) { hist.push([simTime, st.th * 180 / Math.PI, st.w, st.tau]); if (hist.length > 600) hist.shift(); }
+  }
+
+  /* ---------------------------------------------------------------- 3D scene */
+  var canvas = $('view'), renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(36, 1, 1, 4000);
+  var controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.49;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8899a0, 0.85));
+  var sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(300, 500, 250); scene.add(sun);
+  var floorMat = new THREE.MeshLambertMaterial({ color: 0xc9a47a });
+  var floor = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), floorMat); floor.rotation.x = -Math.PI / 2; scene.add(floor);
+  var gridHelper = null;
+  function makeGrid(c1, c2) {
+    if (gridHelper) { scene.remove(gridHelper); gridHelper.geometry.dispose(); gridHelper.material.dispose(); }
+    gridHelper = new THREE.GridHelper(1200, 40, c1, c2); gridHelper.position.y = 0.2; scene.add(gridHelper);
+  }
+  var pend = new THREE.Group(), cubeG = null, driveG = null, spinG = null;
+  scene.add(pend);
+
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function applyTheme() {
+    var view = css('--view') || '#dde4e7';
+    scene.background = new THREE.Color(view);
+    var dark = (document.documentElement.getAttribute('data-theme') === 'dark') ||
+      (!document.documentElement.getAttribute('data-theme') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    floorMat.color.set(dark ? 0x2c3a40 : 0xcfd7da);
+    makeGrid(dark ? 0x4a5e67 : 0x9aa8ae, dark ? 0x37484f : 0xb4c0c5);
+  }
+  function mat(c, rough) { return new THREE.MeshStandardMaterial({ color: c, roughness: rough == null ? 0.6 : rough, metalness: 0.1 }); }
+  function box(w, h, d, m, x, y, z) { var o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); return o; }
+  function cylX(r, len, m, x) { var o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 40), m); o.rotation.z = Math.PI / 2; o.position.x = x; return o; }
+
+  function disposeTree(g) { g.traverse(function (o) { if (o.geometry) o.geometry.dispose(); }); }
+  function buildCube() {
+    if (cubeG) { pend.remove(cubeG); disposeTree(cubeG); }
+    var a = model.a, s = 5, d = model.d;
+    cubeG = new THREE.Group();
+    cubeG.position.y = a / Math.SQRT2;
+    var inner = new THREE.Group(); inner.rotation.x = Math.PI / 4; cubeG.add(inner);
+    var frameM = mat(0xe6dcc4, 0.7), edgeM = mat(0x0e8b97, 0.5), L = a + s;
+    var h = a / 2, sx, sy, sz;
+    for (sy = -1; sy <= 1; sy += 2) for (sz = -1; sz <= 1; sz += 2) inner.add(box(L, s, s, (sy < 0 && sz > 0) ? edgeM : frameM, 0, sy * h, sz * h));
+    for (sx = -1; sx <= 1; sx += 2) for (sz = -1; sz <= 1; sz += 2) inner.add(box(s, L, s, frameM, sx * h, 0, sz * h));
+    for (sx = -1; sx <= 1; sx += 2) for (sy = -1; sy <= 1; sy += 2) inner.add(box(s, s, L, frameM, sx * h, sy * h, 0));
+    // battery and electronics against the -x face, motor and wheel on the axis
+    var bw = Math.min(56, a - 22);
+    inner.add(box(12, bw, 20, mat(0x2f57a8, 0.5), -(h - 12), 0, 0));
+    inner.add(box(2, a - 24, a - 24, mat(0x1f6b4a, 0.6), -(h - 4), 0, 0));
+    inner.add(box(3, 8, 8, mat(0x111111, 0.4), -(h - 6), a * 0.12, a * 0.12));
+    driveG = new THREE.Group(); inner.add(driveG);
+    var motorM = mat(0xb23a2e, 0.45);
+    driveG.add(cylX(17.25, 15, motorM, 13.5));
+    driveG.add(cylX(6, 4.5, mat(0x9aa0a4, 0.3), 23.5));
+    spinG = new THREE.Group(); driveG.add(spinG);
+    // wheel: ring, hub, spokes and rim bolts, built in the plane x = 0 and spun about the x axis
+    var R = d / 2, rw = 0.115 * d, shape = new THREE.Shape(), hole = new THREE.Path();
+    shape.absarc(0, 0, R, 0, Math.PI * 2, false); hole.absarc(0, 0, R - rw, 0, Math.PI * 2, true); shape.holes.push(hole);
+    var wm = mat(0xd9902f, 0.55);
+    var ring = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 12, bevelEnabled: false, curveSegments: 64 }), wm);
+    ring.rotation.y = Math.PI / 2; ring.position.x = -6; spinG.add(ring);
+    spinG.add(cylX(Math.max(6, 0.13 * d), 8, wm, 0));
+    for (var k = 0; k < 3; k++) {
+      var sp = box(8, R, 8, wm, 0, 0, 0); sp.geometry.translate(0, R / 2, 0); sp.rotation.x = k * 2 * Math.PI / 3; spinG.add(sp);
+    }
+    var steel = mat(0x8e979c, 0.3), pr = R - rw / 2;
+    for (var i = 0; i < model.bolts; i++) {
+      var ang = 2 * Math.PI * i / Math.max(1, 13), bo = cylX(2.2, 12, steel, 0);
+      bo.position.set(0, pr * Math.cos(ang), pr * Math.sin(ang)); spinG.add(bo);
+    }
+    driveG.rotation.set(0, P.across ? Math.PI / 2 : 0, 0);
+    pend.add(cubeG);
+    var cam = Math.max(model.a, 90);
+    if (!buildCube.placed) { camera.position.set(cam * 2.3, cam * 1.5, cam * 1.9); buildCube.placed = true; }
+    controls.target.set(0, model.a / Math.SQRT2, 0); controls.update();
+  }
+  function resize() {
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w && h && (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio()))) {
+      renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    }
+  }
+
+  /* ---------------------------------------------------------------- strip chart */
+  var strip = $('strip'), sctx = strip.getContext('2d');
+  function drawStrip() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), w = strip.clientWidth, h = strip.clientHeight;
+    if (strip.width !== Math.floor(w * dpr) || strip.height !== Math.floor(h * dpr)) { strip.width = Math.floor(w * dpr); strip.height = Math.floor(h * dpr); }
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0); sctx.clearRect(0, 0, w, h);
+    var ink = css('--ink'), muted = css('--muted'), line = css('--line'), cols = [css('--c1'), css('--c2'), css('--c3')];
+    var panels = [
+      { name: 'lean (deg)', lim: 15, idx: 1, fmt: function (v) { return v.toFixed(0); } },
+      { name: 'wheel (rad/s)', lim: W_NL, idx: 2, fmt: function (v) { return v.toFixed(0); } },
+      { name: 'torque (N·m)', lim: P.tau, idx: 3, fmt: function (v) { return v.toFixed(3); } }
+    ];
+    var narrow = w < 520, padL = narrow ? 44 : 84, padR = 8, gap = 8, ph = (h - gap * 2 - 14) / 3;
+    sctx.font = '11px ' + css('--font-mono'); sctx.textBaseline = 'middle';
+    panels.forEach(function (pn, i) {
+      var y0 = i * (ph + gap), yc = y0 + ph / 2, x0 = padL, x1 = w - padR;
+      sctx.strokeStyle = line; sctx.lineWidth = 1; sctx.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0, ph);
+      sctx.beginPath(); sctx.moveTo(x0, yc); sctx.lineTo(x1, yc); sctx.setLineDash([3, 3]); sctx.stroke(); sctx.setLineDash([]);
+      sctx.fillStyle = muted; sctx.textAlign = 'left';
+      if (narrow) sctx.fillText(pn.name, x0 + 6, y0 + 9); else sctx.fillText(pn.name, 2, yc);
+      sctx.textAlign = 'right'; sctx.fillText('+' + pn.fmt(pn.lim), x0 - 6, y0 + 7); sctx.fillText('-' + pn.fmt(pn.lim), x0 - 6, y0 + ph - 7);
+      if (hist.length < 2) return;
+      var t1 = hist[hist.length - 1][0], t0 = t1 - 6;
+      sctx.beginPath(); sctx.strokeStyle = cols[i]; sctx.lineWidth = 1.8;
+      var started = false;
+      hist.forEach(function (r) {
+        if (r[0] < t0) return;
+        var x = x0 + (r[0] - t0) / 6 * (x1 - x0), v = Math.max(-1, Math.min(1, r[pn.idx] / pn.lim));
+        var y = yc - v * (ph / 2 - 2);
+        if (!started) { sctx.moveTo(x, y); started = true; } else sctx.lineTo(x, y);
+      });
+      sctx.stroke();
+    });
+    sctx.fillStyle = muted; sctx.textAlign = 'right'; sctx.fillText('now', w - padR, h - 5); sctx.textAlign = 'left'; sctx.fillText('-6 s', padL, h - 5);
+    sctx.fillStyle = ink;
+  }
+
+  /* ---------------------------------------------------------------- readouts */
+  function setChip(el, txt, cls) { el.textContent = txt; el.className = 'chip' + (el.id === 'chipState' ? ' state' : '') + (cls ? ' ' + cls : ''); }
+  function updateChips() {
+    var deg = st.th * 180 / Math.PI, rpm = st.w * 60 / (2 * Math.PI), pct = P.tau > 0 ? Math.abs(st.tau) / P.tau * 100 : 0;
+    $('chipLean').textContent = 'lean ' + deg.toFixed(1) + '°';
+    $('chipWheel').textContent = 'wheel ' + Math.round(rpm) + ' rpm';
+    $('chipTorque').textContent = 'torque ' + Math.round(pct) + '%';
+    var s = $('chipState');
+    if (fallen) setChip(s, 'Fell over', 'bad');
+    else if (P.across && Math.abs(deg) > 2) setChip(s, 'Wheel cannot reach this axis', 'bad');
+    else if (!P.ctl && Math.abs(deg) > 1) setChip(s, 'Controller off', 'warn');
+    else if (pct > 98) setChip(s, 'At the torque limit', 'warn');
+    else if (Math.abs(st.w) > 0.97 * W_NL) setChip(s, 'Wheel at its speed limit', 'warn');
+    else if (Math.abs(deg) < 1.5) setChip(s, 'Balancing', 'ok');
+    else setChip(s, 'Recovering', 'warn');
+  }
+  var metricTimer = null, sweepToken = 0;
+  function fmt(v, n) { return v.toFixed(n); }
+  function updateResults() {
+    var p = model, ratio = P.tau / p.Mgl, pole = Math.sqrt(p.Mgl / p.J1);
+    $('rM').textContent = fmt(p.M * 1e3, 0) + ' g';
+    $('rL').textContent = fmt(p.l * 1e3, 0) + ' mm';
+    $('rMgl').textContent = fmt(p.Mgl, 3) + ' N·m';
+    $('rRatio').textContent = fmt(ratio, 2);
+    $('rPole').textContent = fmt(pole, 1) + ' /s (' + fmt(1000 / pole, 0) + ' ms)';
+    $('rJw').textContent = (p.Jw * 1e5).toFixed(1) + 'e-5 kg·m²';
+    $('rH').textContent = fmt(p.Jw * W_NL, 4) + ' N·m·s';
+    $('rLean').textContent = '...'; $('rLim').textContent = '...';
+    clearTimeout(metricTimer);
+    metricTimer = setTimeout(function () {
+      var r = maxLean(p, P.tau, P.spd), v = $('verdict'), lean = P.across ? 0 : r.deg;
+      $('rLean').textContent = P.across ? '0 deg' : fmt(r.deg, 1) + ' deg';
+      $('rLim').textContent = P.across ? 'wheel axis' : r.limit + (r.limit === 'wheel speed' ? ' (peak ' + fmt(r.wpk, 0) + ' rad/s)' : '');
+      var cls, head, body;
+      if (P.across) { cls = 'bad'; head = 'It cannot balance.'; body = 'With the wheel axis across the edge, the motor turns the cube about a different axis from the one it falls about.'; }
+      else if (lean >= 10) { cls = 'ok'; head = 'Workable on paper.'; body = 'It should hold from about ' + fmt(lean, 0) + ' degrees of lean with ideal sensing. Plan on noticeably less on the bench.'; }
+      else if (lean >= 5) { cls = 'warn'; head = 'Marginal.'; body = 'Only ' + fmt(lean, 0) + ' degrees of recovery. You would have to place it on the edge almost exactly upright.'; }
+      else { cls = 'bad'; head = 'Too heavy for this motor.'; body = 'It recovers from ' + fmt(lean, 1) + ' degrees at best. Lighten it, shrink it, or raise the torque limit.'; }
+      v.className = 'verdict ' + cls; v.innerHTML = '<b>' + head + '</b> ' + body;
+    }, 120);
+  }
+  function updateSweep() {
+    var token = ++sweepToken, svg = $('sweep'), sizes = [60, 70, 80, 90, 100, 110, 120, 130, 140, 150], out = [], i = 0;
+    function next() {
+      if (token !== sweepToken) return;
+      if (i >= sizes.length) { drawSweep(sizes, out); return; }
+      var a = sizes[i], d = a - 16, m = makeModel(a, d, Math.round(10 * d / 100), P.bat);
+      out.push(maxLean(m, P.tau, P.spd)); i++; setTimeout(next, 0);
+    }
+    next();
+  }
+  function drawSweep(sizes, out) {
+    var svg = $('sweep'), W = 720, H = 270, l = 46, r = 12, t = 22, b = 44, pw = W - l - r, ph = H - t - b;
+    var top = Math.max(20, Math.ceil(Math.max.apply(null, out.map(function (o) { return o.deg; })) / 5) * 5);
+    var s = '', k, bw = pw / sizes.length;
+    for (k = 0; k <= top; k += 5) {
+      var y = t + ph - k / top * ph;
+      s += '<line x1="' + l + '" x2="' + (W - r) + '" y1="' + y + '" y2="' + y + '" style="stroke:var(--line)" stroke-width="1"/>';
+      s += '<text x="' + (l - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="12" style="fill:var(--muted);font-family:var(--font-mono)">' + k + '</text>';
+    }
+    sizes.forEach(function (a, j) {
+      var o = out[j], hgt = o.deg / top * ph, x = l + j * bw + bw * 0.16, w = bw * 0.68, y = t + ph - hgt;
+      var cur = Math.abs(a - P.a) < 5, color = o.limit === 'wheel speed' ? 'var(--c2)' : 'var(--c1)';
+      s += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + Math.max(1, hgt) + '" rx="2" style="fill:' + color + ';' + (cur ? 'stroke:var(--ink);stroke-width:2.5' : '') + '"/>';
+      s += '<text x="' + (x + w / 2) + '" y="' + (y - 6) + '" text-anchor="middle" font-size="12" style="fill:var(--ink);font-family:var(--font-mono)">' + o.deg.toFixed(1) + '</text>';
+      s += '<text x="' + (x + w / 2) + '" y="' + (H - b + 18) + '" text-anchor="middle" font-size="12" style="fill:' + (cur ? 'var(--ink)' : 'var(--muted)') + ';font-family:var(--font-mono);font-weight:' + (cur ? 700 : 400) + '">' + a + '</text>';
+    });
+    s += '<text x="' + (l + pw / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" style="fill:var(--muted)">cube side (mm)</text>';
+    s += '<text x="12" y="' + (t + ph / 2) + '" text-anchor="middle" font-size="12" transform="rotate(-90 12 ' + (t + ph / 2) + ')" style="fill:var(--muted)">most recoverable lean (deg)</text>';
+    s += '<rect x="' + (W - 250) + '" y="2" width="10" height="10" rx="2" style="fill:var(--c1)"/><text x="' + (W - 235) + '" y="11" font-size="12" style="fill:var(--ink)">limited by torque</text>';
+    s += '<rect x="' + (W - 120) + '" y="2" width="10" height="10" rx="2" style="fill:var(--c2)"/><text x="' + (W - 105) + '" y="11" font-size="12" style="fill:var(--ink)">by wheel speed</text>';
+    svg.innerHTML = s;
+  }
+
+  /* ---------------------------------------------------------------- wiring */
+  function rebuild(resetOnly) {
+    readParams(); resetSim();
+    if (!resetOnly) buildCube();
+    else driveG.rotation.set(0, P.across ? Math.PI / 2 : 0, 0);
+    updateResults();
+  }
+  ['inA', 'inD', 'inB', 'inBat'].forEach(function (id) { $(id).addEventListener('input', function () { rebuild(false); updateSweep(); }); });
+  ['inT', 'inS'].forEach(function (id) { $(id).addEventListener('input', function () { rebuild(true); updateSweep(); }); });
+  $('inL').addEventListener('input', function () { rebuild(true); });
+  $('ctl').addEventListener('change', function () { rebuild(true); });
+  $('across').addEventListener('change', function () { rebuild(true); });
+  $('btnReset').addEventListener('click', function () { rebuild(true); });
+  function push(dir) { if (!fallen) st.thd += dir * 0.5; }
+  $('btnL').addEventListener('click', function () { push(-1); });
+  $('btnR').addEventListener('click', function () { push(1); });
+
+  function frame(now) {
+    var dt = Math.min(0.05, (now - lastT) / 1000 || 0); lastT = now;
+    acc += dt;
+    while (acc >= DT) { advance(); acc -= DT; }
+    pend.rotation.x = st.th;
+    if (spinG) spinG.rotation.x = spin;
+    controls.update(); resize(); renderer.render(scene, camera);
+    updateChips(); drawStrip();
+    requestAnimationFrame(frame);
+  }
+  readParams(); applyTheme();
+  if (window.matchMedia) { var mq = window.matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', applyTheme); }
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  resetSim(); buildCube(); updateResults(); updateSweep();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>
